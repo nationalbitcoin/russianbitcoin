@@ -71,11 +71,11 @@ bool QRImageWidget::setQR(const QString& data, const QString& text)
 
     if (!text.isEmpty()) {
         QFont font = GUIUtil::fixedPitchFont();
-        font.setStyleStrategy(QFont::NoAntialias);
+        font.setStyleStrategy(QFont::PreferMatch);
         QRect paddedRect = qrAddrImage.rect();
 
         // calculate ideal font size
-        qreal font_size = GUIUtil::calculateIdealFontSize(paddedRect.width() - 20, text, font);
+        qreal font_size = GUIUtil::calculateIdealFontSize(paddedRect.width(), text, font);
         font.setPointSizeF(font_size);
 
         painter.setFont(font);

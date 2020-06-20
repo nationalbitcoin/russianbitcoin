@@ -27,9 +27,7 @@ public:
 void DummyWalletInit::AddWalletOptions() const
 {
     gArgs.AddHiddenArgs({
-        "-addresstype",
         "-avoidpartialspends",
-        "-changetype",
         "-disablewallet",
         "-discardfee=<amt>",
         "-fallbackfee=<amt>",

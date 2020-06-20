@@ -123,6 +123,14 @@ public:
     explicit uint256(const std::vector<unsigned char>& vch) : base_blob<256>(vch) {}
 };
 
+/** 512-bit opaque blob.
+ */
+class uint512 : public base_blob<512> {
+public:
+    uint512() {}
+    explicit uint512(const std::vector<unsigned char>& vch) : base_blob<512>(vch) {}
+};
+
 /* uint256 from const char *.
  * This is a separate function because the constructor uint256(const char*) can result
  * in dangerously catching uint256(0).
@@ -144,6 +152,28 @@ inline uint256 uint256S(const std::string& str)
     return rv;
 }
 
+/* uint512 from const char *.
+ * This is a separate function because the constructor uint512(const char*) can result
+ * in dangerously catching uint512(0).
+ */
+inline uint512 uint512S(const char *str)
+{
+    uint512 rv;
+    rv.SetHex(str);
+    return rv;
+}
+/* uint512 from std::string.
+ * This is a separate function because the constructor uint512(const std::string &str) can result
+ * in dangerously catching uint512(0) via std::string(const char*).
+ */
+inline uint512 uint512S(const std::string& str)
+{
+    uint512 rv;
+    rv.SetHex(str);
+    return rv;
+}
+
 uint256& UINT256_ONE();
+uint512& UINT512_ONE();
 
 #endif // BITCOIN_UINT256_H

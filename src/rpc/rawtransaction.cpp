@@ -587,15 +587,6 @@ static UniValue decodescript(const JSONRPCRequest& request)
         if (type.get_str() == "pubkey" || type.get_str() == "pubkeyhash" || type.get_str() == "multisig" || type.get_str() == "nonstandard") {
             std::vector<std::vector<unsigned char>> solutions_data;
             txnouttype which_type = Solver(script, solutions_data);
-            // Uncompressed pubkeys cannot be used with segwit checksigs.
-            // If the script contains an uncompressed pubkey, skip encoding of a segwit program.
-            if ((which_type == TX_PUBKEY) || (which_type == TX_MULTISIG)) {
-                for (const auto& solution : solutions_data) {
-                    if ((solution.size() != 1) && !CPubKey(solution).IsCompressed()) {
-                        return r;
-                    }
-                }
-            }
             UniValue sr(UniValue::VOBJ);
             CScript segwitScr;
             if (which_type == TX_PUBKEY) {

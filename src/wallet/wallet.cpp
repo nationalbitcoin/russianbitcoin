@@ -2568,7 +2568,7 @@ TransactionError CWallet::FillPSBT(PartiallySignedTransaction& psbtx, bool& comp
     return TransactionError::OK;
 }
 
-SigningResult CWallet::SignMessage(const std::string& message, const PKHash& pkhash, std::string& str_sig) const
+SigningResult CWallet::SignMessage(const std::string& message, const WitnessV0KeyHash& pkhash, std::string& str_sig) const
 {
     SignatureData sigdata;
     CScript script_pub_key = GetScriptForDestination(pkhash);
@@ -2691,39 +2691,11 @@ static uint32_t GetLocktimeForNewTransaction(interfaces::Chain& chain, interface
     return locktime;
 }
 
-OutputType CWallet::TransactionChangeType(OutputType change_type, const std::vector<CRecipient>& vecSend)
-{
-    // If -changetype is specified, always use that change type.
-    if (change_type != OutputType::CHANGE_AUTO) {
-        return change_type;
-    }
-
-    // if m_default_address_type is legacy, use legacy address as change (even
-    // if some of the outputs are P2WPKH or P2WSH).
-    if (m_default_address_type == OutputType::LEGACY) {
-        return OutputType::LEGACY;
-    }
-
-    // if any destination is P2WPKH or P2WSH, use P2WPKH for the change
-    // output.
-    for (const auto& recipient : vecSend) {
-        // Check if any destination contains a witness program:
-        int witnessversion = 0;
-        std::vector<unsigned char> witnessprogram;
-        if (recipient.scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram)) {
-            return OutputType::BECH32;
-        }
-    }
-
-    // else use m_default_address_type for change
-    return m_default_address_type;
-}
-
 bool CWallet::CreateTransaction(interfaces::Chain::Lock& locked_chain, const std::vector<CRecipient>& vecSend, CTransactionRef& tx, CAmount& nFeeRet,
                          int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign)
 {
     CAmount nValue = 0;
-    const OutputType change_type = TransactionChangeType(coin_control.m_change_type ? *coin_control.m_change_type : m_default_change_type, vecSend);
+    const OutputType change_type = OutputType::BECH32;
     ReserveDestination reservedest(this, change_type);
     int nChangePosRequest = nChangePosInOut;
     unsigned int nSubtractFeeFromAmount = 0;
@@ -3901,16 +3873,6 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
                 break;
             }
         }
-    }
-
-    if (!gArgs.GetArg("-addresstype", "").empty() && !ParseOutputType(gArgs.GetArg("-addresstype", ""), walletInstance->m_default_address_type)) {
-        error = strprintf(_("Unknown address type '%s'").translated, gArgs.GetArg("-addresstype", ""));
-        return nullptr;
-    }
-
-    if (!gArgs.GetArg("-changetype", "").empty() && !ParseOutputType(gArgs.GetArg("-changetype", ""), walletInstance->m_default_change_type)) {
-        error = strprintf(_("Unknown change type '%s'").translated, gArgs.GetArg("-changetype", ""));
-        return nullptr;
     }
 
     if (gArgs.IsArgSet("-mintxfee")) {

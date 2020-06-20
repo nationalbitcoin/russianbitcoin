@@ -13,15 +13,15 @@
 int CCrypter::BytesToKeySHA512AES(const std::vector<unsigned char>& chSalt, const SecureString& strKeyData, int count, unsigned char *key,unsigned char *iv) const
 {
     // This mimics the behavior of openssl's EVP_BytesToKey with an aes256cbc
-    // cipher and sha512 message digest. Because sha512's output size (64b) is
+    // cipher and sha3-512 message digest. Because sha3-512's output size (64b) is
     // greater than the aes256 block size (16b) + aes256 key size (32b),
     // there's no need to process more than once (D_0).
 
     if(!count || !key || !iv)
         return 0;
 
-    unsigned char buf[CSHA512::OUTPUT_SIZE];
-    CSHA512 di;
+    unsigned char buf[CSHA3_512::OUTPUT_SIZE];
+    CSHA3_512 di;
 
     di.Write((const unsigned char*)strKeyData.data(), strKeyData.size());
     di.Write(chSalt.data(), chSalt.size());
@@ -130,9 +130,9 @@ bool DecryptKey(const CKeyingMaterial& vMasterKey, const std::vector<unsigned ch
     if(!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
         return false;
 
-    if (vchSecret.size() != 32)
+    if (vchSecret.size() != 64)
         return false;
 
-    key.Set(vchSecret.begin(), vchSecret.end(), vchPubKey.IsCompressed());
+    key.Set(vchSecret.begin(), vchSecret.end());
     return key.VerifyPubKey(vchPubKey);
 }

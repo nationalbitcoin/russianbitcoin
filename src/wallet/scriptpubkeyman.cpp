@@ -58,11 +58,6 @@ enum class IsMineResult
     INVALID = 3,    //!< Not spendable by anyone (uncompressed pubkey in segwit, P2SH inside P2SH or witness, witness inside witness)
 };
 
-bool PermitsUncompressed(IsMineSigVersion sigversion)
-{
-    return sigversion == IsMineSigVersion::TOP || sigversion == IsMineSigVersion::P2SH;
-}
-
 bool HaveKeys(const std::vector<valtype>& pubkeys, const LegacyScriptPubKeyMan& keystore)
 {
     for (const valtype& pubkey : pubkeys) {
@@ -96,7 +91,7 @@ IsMineResult IsMineInner(const LegacyScriptPubKeyMan& keystore, const CScript& s
         break;
     case TX_PUBKEY:
         keyID = CPubKey(vSolutions[0]).GetID();
-        if (!PermitsUncompressed(sigversion) && vSolutions[0].size() != 33) {
+        if (vSolutions[0].size() != 33) {
             return IsMineResult::INVALID;
         }
         if (keystore.HaveKey(keyID)) {
@@ -120,12 +115,6 @@ IsMineResult IsMineInner(const LegacyScriptPubKeyMan& keystore, const CScript& s
     }
     case TX_PUBKEYHASH:
         keyID = CKeyID(uint160(vSolutions[0]));
-        if (!PermitsUncompressed(sigversion)) {
-            CPubKey pubkey;
-            if (keystore.GetPubKey(keyID, pubkey) && !pubkey.IsCompressed()) {
-                return IsMineResult::INVALID;
-            }
-        }
         if (keystore.HaveKey(keyID)) {
             ret = std::max(ret, IsMineResult::SPENDABLE);
         }
@@ -175,11 +164,9 @@ IsMineResult IsMineInner(const LegacyScriptPubKeyMan& keystore, const CScript& s
         // them) enable spend-out-from-under-you attacks, especially
         // in shared-wallet situations.
         std::vector<valtype> keys(vSolutions.begin()+1, vSolutions.begin()+vSolutions.size()-1);
-        if (!PermitsUncompressed(sigversion)) {
-            for (size_t i = 0; i < keys.size(); i++) {
-                if (keys[i].size() != 33) {
-                    return IsMineResult::INVALID;
-                }
+        for (size_t i = 0; i < keys.size(); i++) {
+            if (keys[i].size() != 33) {
+                return IsMineResult::INVALID;
             }
         }
         if (HaveKeys(keys, keystore)) {
@@ -512,7 +499,7 @@ bool LegacyScriptPubKeyMan::SignTransaction(CMutableTransaction& tx, const std::
     return ::SignTransaction(tx, this, coins, sighash, input_errors);
 }
 
-SigningResult LegacyScriptPubKeyMan::SignMessage(const std::string& message, const PKHash& pkhash, std::string& str_sig) const
+SigningResult LegacyScriptPubKeyMan::SignMessage(const std::string& message, const WitnessV0KeyHash& pkhash, std::string& str_sig) const
 {
     CKeyID key_id(pkhash);
     CKey key;
@@ -763,7 +750,7 @@ static bool ExtractPubKey(const CScript &dest, CPubKey& pubKeyOut)
 {
     std::vector<std::vector<unsigned char>> solutions;
     return Solver(dest, solutions) == TX_PUBKEY &&
-        (pubKeyOut = CPubKey(solutions[0])).IsFullyValid();
+        (pubKeyOut = CPubKey(solutions[0])).IsValid();
 }
 
 bool LegacyScriptPubKeyMan::RemoveWatchOnly(const CScript &dest)
@@ -926,7 +913,6 @@ CPubKey LegacyScriptPubKeyMan::GenerateNewKey(WalletBatch &batch, bool internal)
     assert(!m_storage.IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS));
     assert(!m_storage.IsWalletFlagSet(WALLET_FLAG_BLANK_WALLET));
     AssertLockHeld(cs_KeyStore);
-    bool fCompressed = m_storage.CanSupportFeature(FEATURE_COMPRPUBKEY); // default to compressed public keys if we want 0.6.0 wallets
 
     CKey secret;
 
@@ -938,13 +924,10 @@ CPubKey LegacyScriptPubKeyMan::GenerateNewKey(WalletBatch &batch, bool internal)
     if (IsHDEnabled()) {
         DeriveNewChildKey(batch, metadata, secret, (m_storage.CanSupportFeature(FEATURE_HD_SPLIT) ? internal : false));
     } else {
-        secret.MakeNewKey(fCompressed);
+        secret.MakeNewKey();
     }
 
-    // Compressed public keys were introduced in version 0.6.0
-    if (fCompressed) {
-        m_storage.SetMinVersion(FEATURE_COMPRPUBKEY);
-    }
+    m_storage.SetMinVersion(FEATURE_COMPRPUBKEY);
 
     CPubKey pubkey = secret.GetPubKey();
     assert(secret.VerifyPubKey(pubkey));
@@ -1047,7 +1030,7 @@ CPubKey LegacyScriptPubKeyMan::GenerateNewSeed()
 {
     assert(!m_storage.IsWalletFlagSet(WALLET_FLAG_DISABLE_PRIVATE_KEYS));
     CKey key;
-    key.MakeNewKey(true);
+    key.MakeNewKey();
     return DeriveNewSeed(key);
 }
 
@@ -1297,7 +1280,7 @@ bool LegacyScriptPubKeyMan::ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& key
 
 void LegacyScriptPubKeyMan::LearnRelatedScripts(const CPubKey& key, OutputType type)
 {
-    if (key.IsCompressed() && (type == OutputType::P2SH_SEGWIT || type == OutputType::BECH32)) {
+    if (type == OutputType::P2SH_SEGWIT || type == OutputType::BECH32) {
         CTxDestination witdest = WitnessV0KeyHash(key.GetID());
         CScript witprog = GetScriptForDestination(witdest);
         // Make sure the resulting program is solvable.

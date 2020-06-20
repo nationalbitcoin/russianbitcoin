@@ -1,0 +1,33 @@
+# /etc/conf.d/russianbitcoind: config file for /etc/init.d/russianbitcoind
+
+# Config file location
+#RUSSIANBITCOIND_CONFIGFILE="/etc/russianbitcoin/russianbitcoin.conf"
+
+# What directory to write pidfile to?  (created and owned by $RUSSIANBITCOIND_USER)
+#RUSSIANBITCOIND_PIDDIR="/var/run/russianbitcoind"
+
+# What filename to give the pidfile
+#RUSSIANBITCOIND_PIDFILE="${RUSSIANBITCOIND_PIDDIR}/russianbitcoind.pid"
+
+# Where to write russianbitcoind data (be mindful that the blockchain is large)
+#RUSSIANBITCOIND_DATADIR="/var/lib/russianbitcoind"
+
+# User and group to own russianbitcoind process
+#RUSSIANBITCOIND_USER="russianbitcoin"
+#RUSSIANBITCOIND_GROUP="russianbitcoin"
+
+# Path to russianbitcoind executable
+#RUSSIANBITCOIND_BIN="/usr/bin/russianbitcoind"
+
+# Nice value to run russianbitcoind under
+#RUSSIANBITCOIND_NICE=0
+
+# Additional options (avoid -conf and -datadir, use flags above)
+#RUSSIANBITCOIND_OPTS=""
+
+# The timeout in seconds OpenRC will wait for russianbitcoind to terminate
+# after a SIGTERM has been raised.
+# Note that this will be mapped as argument to start-stop-daemon's
+# '--retry' option, which means you can specify a retry schedule
+# here. For more information see man 8 start-stop-daemon.
+RUSSIANBITCOIND_SIGTERM_TIMEOUT=600

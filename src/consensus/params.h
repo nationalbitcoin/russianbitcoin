@@ -7,6 +7,8 @@
 #define BITCOIN_CONSENSUS_PARAMS_H
 
 #include <uint256.h>
+#include <arith_uint256.h>
+#include <amount.h>
 #include <limits>
 
 namespace Consensus {
@@ -72,8 +74,10 @@ struct Params {
     uint32_t nMinerConfirmationWindow;
     BIP9Deployment vDeployments[MAX_VERSION_BITS_DEPLOYMENTS];
     /** Proof of work parameters */
-    uint256 powLimit;
-    bool fPowAllowMinDifficultyBlocks;
+    CAmount nPremineSubsidy;
+    CAmount nSubsidyLimit;
+    int nSubsidyAdjustmentHistory;
+    arith_uint256 powLimit;
     bool fPowNoRetargeting;
     int64_t nPowTargetSpacing;
     int64_t nPowTargetTimespan;

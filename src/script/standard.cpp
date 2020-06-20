@@ -22,7 +22,7 @@ PKHash::PKHash(const CPubKey& pubkey) : uint160(pubkey.GetID()) {}
 
 WitnessV0ScriptHash::WitnessV0ScriptHash(const CScript& in)
 {
-    CSHA256().Write(in.data(), in.size()).Finalize(begin());
+    CSHA3_256().Write(in.data(), in.size()).Finalize(begin());
 }
 
 const char* GetTxnOutputType(txnouttype t)
@@ -46,10 +46,6 @@ static bool MatchPayToPubkey(const CScript& script, valtype& pubkey)
 {
     if (script.size() == CPubKey::SIZE + 2 && script[0] == CPubKey::SIZE && script.back() == OP_CHECKSIG) {
         pubkey = valtype(script.begin() + 1, script.begin() + CPubKey::SIZE + 1);
-        return CPubKey::ValidSize(pubkey);
-    }
-    if (script.size() == CPubKey::COMPRESSED_SIZE + 2 && script[0] == CPubKey::COMPRESSED_SIZE && script.back() == OP_CHECKSIG) {
-        pubkey = valtype(script.begin() + 1, script.begin() + CPubKey::COMPRESSED_SIZE + 1);
         return CPubKey::ValidSize(pubkey);
     }
     return false;

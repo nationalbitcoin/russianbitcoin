@@ -171,12 +171,12 @@ struct PSBTInput
                 case PSBT_IN_PARTIAL_SIG:
                 {
                     // Make sure that the key is the size of pubkey + 1
-                    if (key.size() != CPubKey::SIZE + 1 && key.size() != CPubKey::COMPRESSED_SIZE + 1) {
+                    if (key.size() != CPubKey::SIZE + 1) {
                         throw std::ios_base::failure("Size of key was not the expected size for the type partial signature pubkey");
                     }
                     // Read in the pubkey from key
                     CPubKey pubkey(key.begin() + 1, key.end());
-                    if (!pubkey.IsFullyValid()) {
+                    if (!pubkey.IsValid()) {
                        throw std::ios_base::failure("Invalid pubkey");
                     }
                     if (partial_sigs.count(pubkey.GetID()) > 0) {

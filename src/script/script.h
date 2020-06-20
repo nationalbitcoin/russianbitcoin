@@ -165,6 +165,7 @@ enum opcodetype
     OP_RIPEMD160 = 0xa6,
     OP_SHA1 = 0xa7,
     OP_SHA256 = 0xa8,
+    OP_SHA3_256 = 0xb3,
     OP_HASH160 = 0xa9,
     OP_HASH256 = 0xaa,
     OP_CODESEPARATOR = 0xab,

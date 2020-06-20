@@ -133,8 +133,8 @@ Intro::Intro(QWidget *parent, int64_t blockchain_size_gb, int64_t chain_state_si
     ui->lblExplanation1->setText(ui->lblExplanation1->text()
         .arg(PACKAGE_NAME)
         .arg(m_blockchain_size_gb)
-        .arg(2009)
-        .arg(tr("Bitcoin"))
+        .arg(2020)
+        .arg(tr("Russian Bitcoin"))
     );
     ui->lblExplanation2->setText(ui->lblExplanation2->text().arg(PACKAGE_NAME));
 
@@ -238,7 +238,7 @@ bool Intro::showIfNeeded(interfaces::Node& node, bool& did_show_intro, bool& pru
         settings.setValue("fReset", false);
     }
     /* Only override -datadir if different from the default, to make it possible to
-     * override -datadir in the bitcoin.conf file in the default data directory
+     * override -datadir in the russianbitcoin.conf file in the default data directory
      * (to be consistent with bitcoind behavior)
      */
     if(dataDir != GUIUtil::getDefaultDataDirectory()) {
@@ -361,7 +361,7 @@ void Intro::UpdatePruneLabels(bool prune_checked)
     }
     ui->lblExplanation3->setVisible(prune_checked);
     ui->sizeWarningLabel->setText(
-        tr("%1 will download and store a copy of the Bitcoin block chain.").arg(PACKAGE_NAME) + " " +
+        tr("%1 will download and store a copy of the Russian Bitcoin block chain.").arg(PACKAGE_NAME) + " " +
         storageRequiresMsg.arg(m_required_space_gb) + " " +
         tr("The wallet will also be stored in this directory.")
     );
