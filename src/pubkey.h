@@ -13,6 +13,7 @@
 
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 
 const unsigned int BIP32_EXTKEY_SIZE = 74;
 
@@ -30,20 +31,9 @@ typedef uint256 ChainCode;
 class CPubKey
 {
 public:
-    /**
-     * secp256k1:
-     */
-    static constexpr unsigned int SIZE                   = 65;
-    static constexpr unsigned int COMPRESSED_SIZE        = 33;
-    static constexpr unsigned int SIGNATURE_SIZE         = 72;
-    static constexpr unsigned int COMPACT_SIGNATURE_SIZE = 65;
-    /**
-     * see www.keylength.com
-     * script supports up to 75 for single byte push
-     */
-    static_assert(
-        SIZE >= COMPRESSED_SIZE,
-        "COMPRESSED_SIZE is larger than SIZE");
+    static constexpr unsigned int SIZE                   = 33;
+    static constexpr unsigned int SIGNATURE_SIZE          = 64;
+    static constexpr unsigned int JOINED_SIGNATURE_SIZE = 64 + 32;
 
 private:
 
@@ -56,9 +46,7 @@ private:
     //! Compute the length of a pubkey with a given first byte.
     unsigned int static GetLen(unsigned char chHeader)
     {
-        if (chHeader == 2 || chHeader == 3)
-            return COMPRESSED_SIZE;
-        if (chHeader == 4 || chHeader == 6 || chHeader == 7)
+        if (chHeader == 0x03)
             return SIZE;
         return 0;
     }
@@ -90,6 +78,13 @@ public:
             memcpy(vch, (unsigned char*)&pbegin[0], len);
         else
             Invalidate();
+    }
+
+    template <typename T>
+    void Set32(const T pbegin)
+    {
+        memcpy(&vch[1], (unsigned char*)&pbegin[0], 32);
+        vch[0] = 0x03;
     }
 
     //! Construct a public key using begin/end iterators to byte data.
@@ -124,8 +119,7 @@ public:
     }
     friend bool operator<(const CPubKey& a, const CPubKey& b)
     {
-        return a.vch[0] < b.vch[0] ||
-               (a.vch[0] == b.vch[0] && memcmp(a.vch, b.vch, a.size()) < 0);
+        return memcmp(a.vch, b.vch, a.size()) < 0;
     }
 
     //! Implement serialization, as if this was a byte vector.
@@ -173,31 +167,14 @@ public:
         return size() > 0;
     }
 
-    //! fully validate whether this is a valid public key (more expensive than IsValid())
-    bool IsFullyValid() const;
-
-    //! Check whether this is a compressed public key.
-    bool IsCompressed() const
-    {
-        return size() == COMPRESSED_SIZE;
-    }
-
     /**
-     * Verify a DER signature (~72 bytes).
-     * If this public key is not fully valid, the return value will be false.
+     * Verify a signature (64 bytes).
+     * If this public key is not valid, the return value will be false.
      */
-    bool Verify(const uint256& hash, const std::vector<unsigned char>& vchSig) const;
-
-    /**
-     * Check whether a signature is normalized (lower-S).
-     */
-    static bool CheckLowS(const std::vector<unsigned char>& vchSig);
+    bool Verify(const uint512& hash, const std::vector<unsigned char>& vchSig) const;
 
     //! Recover a public key from a compact signature.
-    bool RecoverCompact(const uint256& hash, const std::vector<unsigned char>& vchSig);
-
-    //! Turn this public key into an uncompressed public key.
-    bool Decompress();
+    bool RecoverCompact(const uint512& hash, const std::vector<unsigned char>& vchSig);
 
     //! Derive BIP32 child pubkey.
     bool Derive(CPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;
@@ -222,17 +199,6 @@ struct CExtPubKey {
     void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
     void Decode(const unsigned char code[BIP32_EXTKEY_SIZE]);
     bool Derive(CExtPubKey& out, unsigned int nChild) const;
-};
-
-/** Users of this module must hold an ECCVerifyHandle. The constructor and
- *  destructor of these are not allowed to run in parallel, though. */
-class ECCVerifyHandle
-{
-    static int refcount;
-
-public:
-    ECCVerifyHandle();
-    ~ECCVerifyHandle();
 };
 
 #endif // BITCOIN_PUBKEY_H

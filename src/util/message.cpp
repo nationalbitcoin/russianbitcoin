@@ -11,6 +11,7 @@
 #include <serialize.h>       // For SER_GETHASH
 #include <util/message.h>
 #include <util/strencodings.h> // For DecodeBase64()
+#include <iostream>
 
 #include <string>
 #include <vector>
@@ -31,7 +32,7 @@ MessageVerificationResult MessageVerify(
         return MessageVerificationResult::ERR_INVALID_ADDRESS;
     }
 
-    if (boost::get<PKHash>(&destination) == nullptr) {
+    if (boost::get<WitnessV0KeyHash>(&destination) == nullptr) {
         return MessageVerificationResult::ERR_ADDRESS_NO_KEY;
     }
 
@@ -46,7 +47,7 @@ MessageVerificationResult MessageVerify(
         return MessageVerificationResult::ERR_PUBKEY_NOT_RECOVERED;
     }
 
-    if (!(CTxDestination(PKHash(pubkey)) == destination)) {
+    if (!(CTxDestination(WitnessV0KeyHash(pubkey.GetID())) == destination)) {
         return MessageVerificationResult::ERR_NOT_SIGNED;
     }
 
@@ -69,9 +70,9 @@ bool MessageSign(
     return true;
 }
 
-uint256 MessageHash(const std::string& message)
+uint512 MessageHash(const std::string& message)
 {
-    CHashWriter hasher(SER_GETHASH, 0);
+    CHashWriter512 hasher(SER_GETHASH, 0);
     hasher << MESSAGE_MAGIC << message;
 
     return hasher.GetHash();

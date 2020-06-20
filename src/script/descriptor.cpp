@@ -654,12 +654,10 @@ protected:
         out.pubkeys.emplace(id, keys[0]);
         ret.emplace_back(GetScriptForRawPubKey(keys[0])); // P2PK
         ret.emplace_back(GetScriptForDestination(PKHash(id))); // P2PKH
-        if (keys[0].IsCompressed()) {
-            CScript p2wpkh = GetScriptForDestination(WitnessV0KeyHash(id));
-            out.scripts.emplace(CScriptID(p2wpkh), p2wpkh);
-            ret.emplace_back(p2wpkh);
-            ret.emplace_back(GetScriptForDestination(ScriptHash(p2wpkh))); // P2SH-P2WPKH
-        }
+        CScript p2wpkh = GetScriptForDestination(WitnessV0KeyHash(id));
+        out.scripts.emplace(CScriptID(p2wpkh), p2wpkh);
+        ret.emplace_back(p2wpkh);
+        ret.emplace_back(GetScriptForDestination(ScriptHash(p2wpkh))); // P2SH-P2WPKH
         return ret;
     }
 public:
@@ -759,27 +757,17 @@ std::unique_ptr<PubkeyProvider> ParsePubkeyInner(uint32_t key_exp_index, const S
         if (IsHex(str)) {
             std::vector<unsigned char> data = ParseHex(str);
             CPubKey pubkey(data);
-            if (pubkey.IsFullyValid()) {
-                if (permit_uncompressed || pubkey.IsCompressed()) {
-                    return MakeUnique<ConstPubkeyProvider>(key_exp_index, pubkey);
-                } else {
-                    error = "Uncompressed keys are not allowed";
-                    return nullptr;
-                }
+            if (pubkey.IsValid()) {
+                return MakeUnique<ConstPubkeyProvider>(key_exp_index, pubkey);
             }
             error = strprintf("Pubkey '%s' is invalid", str);
             return nullptr;
         }
         CKey key = DecodeSecret(str);
         if (key.IsValid()) {
-            if (permit_uncompressed || key.IsCompressed()) {
-                CPubKey pubkey = key.GetPubKey();
-                out.keys.emplace(pubkey.GetID(), key);
-                return MakeUnique<ConstPubkeyProvider>(key_exp_index, pubkey);
-            } else {
-                error = "Uncompressed keys are not allowed";
-                return nullptr;
-            }
+            CPubKey pubkey = key.GetPubKey();
+            out.keys.emplace(pubkey.GetID(), key);
+            return MakeUnique<ConstPubkeyProvider>(key_exp_index, pubkey);
         }
     }
     CExtKey extkey = DecodeExtKey(str);

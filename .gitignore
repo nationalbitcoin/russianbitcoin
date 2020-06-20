@@ -2,11 +2,11 @@
 
 *.exe
 *.pdb
-src/bitcoin
-src/bitcoind
-src/bitcoin-cli
-src/bitcoin-tx
-src/bitcoin-wallet
+src/russianbitcoin
+src/russianbitcoind
+src/russianbitcoin-cli
+src/russianbitcoin-tx
+src/russianbitcoin-wallet
 src/test/fuzz
 !src/test/fuzz/*.*
 src/test/test_bitcoin
@@ -90,8 +90,8 @@ src/qt/bitcoin-qt.includes
 *.qm
 Makefile
 !depends/Makefile
-src/qt/bitcoin-qt
-Bitcoin-Qt.app
+src/qt/russianbitcoin-qt
+RussianBitcoin-Qt.app
 background.tiff*
 
 # Qt Creator

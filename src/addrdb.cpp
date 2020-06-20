@@ -21,7 +21,7 @@ bool SerializeDB(Stream& stream, const Data& data)
 {
     // Write and commit header, data
     try {
-        CHashWriter hasher(SER_DISK, CLIENT_VERSION);
+        CHashWriter256D hasher(SER_DISK, CLIENT_VERSION);
         stream << Params().MessageStart() << data;
         hasher << Params().MessageStart() << data;
         stream << hasher.GetHash();

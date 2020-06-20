@@ -117,7 +117,7 @@ std::string HelpExampleCli(const std::string& methodname, const std::string& arg
 std::string HelpExampleRpc(const std::string& methodname, const std::string& args)
 {
     return "> curl --user myusername --data-binary '{\"jsonrpc\": \"1.0\", \"id\": \"curltest\", "
-        "\"method\": \"" + methodname + "\", \"params\": [" + args + "]}' -H 'content-type: text/plain;' http://127.0.0.1:8332/\n";
+        "\"method\": \"" + methodname + "\", \"params\": [" + args + "]}' -H 'content-type: text/plain;' http://127.0.0.1:7332/\n";
 }
 
 // Converts a hex string to a public key if possible
@@ -127,7 +127,7 @@ CPubKey HexToPubKey(const std::string& hex_in)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid public key: " + hex_in);
     }
     CPubKey vchPubKey(ParseHex(hex_in));
-    if (!vchPubKey.IsFullyValid()) {
+    if (!vchPubKey.IsValid()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid public key: " + hex_in);
     }
     return vchPubKey;
@@ -148,7 +148,7 @@ CPubKey AddrToPubKey(const FillableSigningProvider& keystore, const std::string&
     if (!keystore.GetPubKey(key, vchPubKey)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("no full public key for address %s", addr_in));
     }
-    if (!vchPubKey.IsFullyValid()) {
+    if (!vchPubKey.IsValid()) {
        throw JSONRPCError(RPC_INTERNAL_ERROR, "Wallet contains an invalid public key");
     }
     return vchPubKey;
@@ -172,14 +172,6 @@ CTxDestination AddAndGetMultisigDestination(const int required, const std::vecto
 
     if (script_out.size() > MAX_SCRIPT_ELEMENT_SIZE) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, (strprintf("redeemScript exceeds size limit: %d > %d", script_out.size(), MAX_SCRIPT_ELEMENT_SIZE)));
-    }
-
-    // Check if any keys are uncompressed. If so, the type is legacy
-    for (const CPubKey& pk : pubkeys) {
-        if (!pk.IsCompressed()) {
-            type = OutputType::LEGACY;
-            break;
-        }
     }
 
     // Make the address
