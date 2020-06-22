@@ -29,7 +29,7 @@ bool CPubKey::Derive(CPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChi
     assert((nChild >> 31) == 0);
     assert(size() == SIZE);
     unsigned char out[64];
-    BIP32Hash_32(cc, nChild, *begin(), begin()+1, out);
+    BIP32Hash(cc, nChild, *begin(), begin()+1, out);
     memcpy(ccChild.begin(), out+32, 32);
     pubkeyChild.Set(begin(), end());
     ed25519_add_scalar((unsigned char*)(pubkeyChild.begin() + 1), nullptr, out);

@@ -7,13 +7,19 @@
 void ed25519_sign(unsigned char *signature, const unsigned char *message, size_t message_len, const unsigned char *public_key, const unsigned char *private_key) {
     SHA3_CTX hash;
     unsigned char hram[64];
+    unsigned char tmp[64];
     unsigned char r[64];
     ge_p3 R;
 
+    // Use double sha3-512 to generate
+    //  r parameter for signing
+    sha3_512_Init(&hash);
+    sha3_Update(&hash, private_key, 32);
+    sha3_Update(&hash, message, message_len);
+    sha3_Final(&hash, tmp);
 
     sha3_512_Init(&hash);
-    sha3_Update(&hash, private_key + 32, 32);
-    sha3_Update(&hash, message, message_len);
+    sha3_Update(&hash, tmp, 64);
     sha3_Final(&hash, r);
 
     sc_reduce(r);

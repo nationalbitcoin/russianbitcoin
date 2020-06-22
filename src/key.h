@@ -28,7 +28,7 @@ typedef std::vector<unsigned char, secure_allocator<unsigned char> > CPrivKey;
 class CKey
 {
 public:
-    static const unsigned int SIZE            = 64;
+    static const unsigned int SIZE            = 32;
 
 private:
     //! Whether this private key is valid. We check for correctness when modifying the key
@@ -42,8 +42,8 @@ public:
     //! Construct an invalid private key.
     CKey() : fValid(false)
     {
-        // Important: vch must be 64 bytes in length
-        keydata.resize(64);
+        // Important: vch must be 32 bytes in length
+        keydata.resize(32);
     }
 
     friend bool operator==(const CKey& a, const CKey& b)
@@ -126,8 +126,8 @@ struct CExtKey {
             a.key == b.key;
     }
 
-    void Encode(unsigned char code[BIP32_EXT_PRIVKEY_SIZE]) const;
-    void Decode(const unsigned char code[BIP32_EXT_PRIVKEY_SIZE]);
+    void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
+    void Decode(const unsigned char code[BIP32_EXTKEY_SIZE]);
     bool Derive(CExtKey& out, unsigned int nChild) const;
     CExtPubKey Neuter() const;
     void SetSeed(const unsigned char* seed, unsigned int nSeedLen);
