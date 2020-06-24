@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-extern const unsigned int BIP32_EXTKEY_SIZE;
+static const unsigned int BIP32_EXTKEY_SIZE = 74;
 
 // xpriv
 typedef struct KEYCHAIN_PRIVATE_CTX {
