@@ -10,7 +10,7 @@
 #include <hash.h>
 #include <serialize.h>
 #include <uint256.h>
-#include <keychain.h>
+#include <ed25519.h>
 
 #include <stdexcept>
 #include <vector>

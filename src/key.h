@@ -12,7 +12,6 @@
 #include <support/allocators/secure.h>
 #include <uint256.h>
 #include <ed25519.h>
-#include <keychain.h>
 
 #include <stdexcept>
 #include <vector>

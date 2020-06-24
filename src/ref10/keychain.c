@@ -1,8 +1,10 @@
 #include <string.h>
 #include <assert.h>
-#include "keychain.h"
-#include "hash/ripemd160.h"
 #include "ed25519.h"
+#include "hash/hmac_sha3.h"
+#include "hash/ripemd160.h"
+
+const unsigned int BIP32_EXTKEY_SIZE = 74;
 
 static void BIP32Hash(const unsigned char chainCode[32], unsigned int nChild, unsigned char header, const unsigned char data[32], unsigned char output[64])
 {
