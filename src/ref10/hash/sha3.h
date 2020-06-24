@@ -79,7 +79,9 @@ void keccak_256(const unsigned char* data, size_t len, unsigned char* digest);
 void keccak_512(const unsigned char* data, size_t len, unsigned char* digest);
 #endif
 
+void sha3_224(const unsigned char* data, size_t len, unsigned char* digest);
 void sha3_256(const unsigned char* data, size_t len, unsigned char* digest);
+void sha3_384(const unsigned char* data, size_t len, unsigned char* digest);
 void sha3_512(const unsigned char* data, size_t len, unsigned char* digest);
 
 #ifdef __cplusplus

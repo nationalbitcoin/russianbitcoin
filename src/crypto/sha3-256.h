@@ -7,14 +7,13 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <ref10/sha3.h>
+#include <ref10/hash/sha3.h>
 
 /** A hasher class for SHA3-256. */
 class CSHA3_256
 {
 private:
     SHA3_CTX ctx;
-    uint64_t bytes;
 
 public:
     static constexpr size_t OUTPUT_SIZE = SHA3_256_DIGEST_LENGTH;
@@ -23,7 +22,6 @@ public:
     CSHA3_256& Write(const unsigned char* data, size_t len);
     void Finalize(unsigned char hash[OUTPUT_SIZE]);
     CSHA3_256& Reset();
-    uint64_t Size() const { return bytes; }
 };
 
 #endif // BITCOIN_CRYPTO_SHA3_256_H

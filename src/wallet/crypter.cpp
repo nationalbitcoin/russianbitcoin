@@ -5,7 +5,7 @@
 #include <wallet/crypter.h>
 
 #include <crypto/aes.h>
-#include <crypto/sha512.h>
+#include <crypto/sha3-512.h>
 #include <util/system.h>
 
 #include <vector>
@@ -130,7 +130,8 @@ bool DecryptKey(const CKeyingMaterial& vMasterKey, const std::vector<unsigned ch
     if(!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
         return false;
 
-    if (vchSecret.size() != 64)
+    // Secret may be either 32 or 64 bytes long
+    if (vchSecret.size() != 32 && vchSecret.size() != 64)
         return false;
 
     key.Set(vchSecret.begin(), vchSecret.end());

@@ -10,12 +10,11 @@
 #include <hash.h>
 #include <serialize.h>
 #include <uint256.h>
+#include <keychain.h>
 
 #include <stdexcept>
 #include <vector>
 #include <iostream>
-
-const unsigned int BIP32_EXTKEY_SIZE = 74;
 
 /** A reference to a CKey: the Hash160 of its serialized public key */
 class CKeyID : public uint160
@@ -175,30 +174,30 @@ public:
 
     //! Recover a public key from a compact signature.
     bool RecoverCompact(const uint512& hash, const std::vector<unsigned char>& vchSig);
-
-    //! Derive BIP32 child pubkey.
-    bool Derive(CPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;
 };
 
-struct CExtPubKey {
-    unsigned char nDepth;
-    unsigned char vchFingerprint[4];
-    unsigned int nChild;
-    ChainCode chaincode;
-    CPubKey pubkey;
-
+class CKey;
+class CExtKey;
+class CExtPubKey {
+private:
+    KEYCHAIN_PUBLIC_CTX ctx;
+public:
     friend bool operator==(const CExtPubKey &a, const CExtPubKey &b)
     {
-        return a.nDepth == b.nDepth &&
-            memcmp(&a.vchFingerprint[0], &b.vchFingerprint[0], sizeof(vchFingerprint)) == 0 &&
-            a.nChild == b.nChild &&
-            a.chaincode == b.chaincode &&
-            a.pubkey == b.pubkey;
+        return keychain_public_equals(&a.ctx, &b.ctx);
     }
-
+    //! Replace derivation context
+    void Set(KEYCHAIN_PUBLIC_CTX &ctx) {
+        this->ctx = ctx;
+    }
     void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
     void Decode(const unsigned char code[BIP32_EXTKEY_SIZE]);
+    //! Derive new extended key
     bool Derive(CExtPubKey& out, unsigned int nChild) const;
+    //! Get current public key
+    CPubKey GetPubKey() const;
+    //! Build extended private key using our derivation metadata and provided key.
+    CExtKey Rebuild(const CKey &key) const;
 };
 
 #endif // BITCOIN_PUBKEY_H

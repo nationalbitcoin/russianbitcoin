@@ -171,6 +171,16 @@ BITCOIN_CORE_H = \
   psbt.h \
   random.h \
   randomenv.h \
+  ref10/keypair.c \
+  ref10/keypair.h \
+  ref10/keychain.c \
+  ref10/keychain.h \
+  ref10/hash/sha3.c \
+  ref10/hash/sha3.h \
+  ref10/hash/ripemd160.c \
+  ref10/hash/ripemd160.h \
+  ref10/hash/hmac_sha3.c \
+  ref10/hash/hmac_sha3.h \
   reverse_iterator.h \
   rpc/blockchain.h \
   rpc/client.h \
@@ -372,18 +382,24 @@ crypto_librussianbitcoin_crypto_base_a_SOURCES = \
   crypto/hkdf_sha256_32.h \
   crypto/hmac_sha256.cpp \
   crypto/hmac_sha256.h \
-  crypto/hmac_sha3_512.cpp \
-  crypto/hmac_sha3_512.h \
   crypto/poly1305.h \
   crypto/poly1305.cpp \
   crypto/ripemd160.cpp \
   crypto/ripemd160.h \
+  ref10/keypair.c \
+  ref10/keypair.h \
+  ref10/keychain.c \
+  ref10/keychain.h \
+  ref10/hash/sha3.c \
+  ref10/hash/sha3.h \
+  ref10/hash/ripemd160.c \
+  ref10/hash/ripemd160.h \
+  ref10/hash/hmac_sha3.c \
+  ref10/hash/hmac_sha3.h \
   crypto/sha1.cpp \
   crypto/sha1.h \
   crypto/sha256.cpp \
   crypto/sha256.h \
-  crypto/sha512.cpp \
-  crypto/sha512.h \
   crypto/sha3-512.cpp \
   crypto/sha3-512.h \
   crypto/sha3-256.cpp \
@@ -453,8 +469,16 @@ librussianbitcoin_consensus_a_SOURCES = \
   ref10/precomp_data.h \
   ref10/sc.c \
   ref10/sc.h \
-  ref10/sha3.c \
-  ref10/sha3.h \
+  ref10/keypair.c \
+  ref10/keypair.h \
+  ref10/keychain.c \
+  ref10/keychain.h \
+  ref10/hash/sha3.c \
+  ref10/hash/sha3.h \
+  ref10/hash/ripemd160.c \
+  ref10/hash/ripemd160.h \
+  ref10/hash/hmac_sha3.c \
+  ref10/hash/hmac_sha3.h \
   ref10/sign.c \
   ref10/verify.c \
   serialize.h \

@@ -310,7 +310,7 @@ void LegacyScriptPubKeyMan::UpgradeKeyMetadata()
             CExtKey masterKey;
             masterKey.SetSeed(key.begin(), key.size());
             // Add to map
-            CKeyID master_id = masterKey.key.GetPubKey().GetID();
+            CKeyID master_id = masterKey.GetPubKey().GetID();
             std::copy(master_id.begin(), master_id.begin() + 4, meta.key_origin.fingerprint);
             if (!ParseHDKeypath(meta.hdKeypath, meta.key_origin.path)) {
                 throw std::runtime_error("Invalid stored hdKeypath");
@@ -987,10 +987,10 @@ void LegacyScriptPubKeyMan::DeriveNewChildKey(WalletBatch &batch, CKeyMetadata& 
             metadata.key_origin.path.push_back(hdChain.nExternalChainCounter | BIP32_HARDENED_KEY_LIMIT);
             hdChain.nExternalChainCounter++;
         }
-    } while (HaveKey(childKey.key.GetPubKey().GetID()));
-    secret = childKey.key;
+    } while (HaveKey(childKey.GetPubKey().GetID()));
+    secret = childKey.GetKey();
     metadata.hd_seed_id = hdChain.seed_id;
-    CKeyID master_id = masterKey.key.GetPubKey().GetID();
+    CKeyID master_id = masterKey.GetPubKey().GetID();
     std::copy(master_id.begin(), master_id.begin() + 4, metadata.key_origin.fingerprint);
     metadata.has_key_origin = true;
     // update the chain model in the database

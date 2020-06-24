@@ -14,13 +14,11 @@
 CSHA3_256::CSHA3_256()
 {
     sha3_256_Init(&ctx);
-    bytes = 0;
 }
 
 CSHA3_256& CSHA3_256::Write(const unsigned char* data, size_t len)
 {
     sha3_Update(&ctx, data, len);
-    bytes += len;
     return *this;
 }
 
@@ -32,6 +30,5 @@ void CSHA3_256::Finalize(unsigned char hash[SHA3_512_DIGEST_LENGTH])
 CSHA3_256& CSHA3_256::Reset()
 {
     sha3_256_Init(&ctx);
-    bytes = 0;
     return *this;
 }

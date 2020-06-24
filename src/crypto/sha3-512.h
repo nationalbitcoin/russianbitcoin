@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <ref10/sha3.h>
+#include <ref10/hash/sha3.h>
 
 /** A hasher class for SHA3-512. */
 class CSHA3_512

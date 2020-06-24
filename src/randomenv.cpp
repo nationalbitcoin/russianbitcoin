@@ -11,7 +11,7 @@
 
 #include <clientversion.h>
 #include <compat/cpuid.h>
-#include <crypto/sha512.h>
+#include <crypto/sha3-512.h>
 #include <support/cleanse.h>
 #include <util/time.h> // for GetTime()
 #ifdef WIN32
@@ -62,7 +62,7 @@ extern char** environ;
 
 namespace {
 
-void RandAddSeedPerfmon(CSHA512& hasher)
+void RandAddSeedPerfmon(CSHA3_512& hasher)
 {
 #ifdef WIN32
     // Seed with the entire set of perfmon data
@@ -100,23 +100,23 @@ void RandAddSeedPerfmon(CSHA512& hasher)
 #endif
 }
 
-/** Helper to easily feed data into a CSHA512.
+/** Helper to easily feed data into a CSHA3_512.
  *
  * Note that this does not serialize the passed object (like stream.h's << operators do).
  * Its raw memory representation is used directly.
  */
 template<typename T>
-CSHA512& operator<<(CSHA512& hasher, const T& data) {
-    static_assert(!std::is_same<typename std::decay<T>::type, char*>::value, "Calling operator<<(CSHA512, char*) is probably not what you want");
-    static_assert(!std::is_same<typename std::decay<T>::type, unsigned char*>::value, "Calling operator<<(CSHA512, unsigned char*) is probably not what you want");
-    static_assert(!std::is_same<typename std::decay<T>::type, const char*>::value, "Calling operator<<(CSHA512, const char*) is probably not what you want");
-    static_assert(!std::is_same<typename std::decay<T>::type, const unsigned char*>::value, "Calling operator<<(CSHA512, const unsigned char*) is probably not what you want");
+CSHA3_512& operator<<(CSHA3_512& hasher, const T& data) {
+    static_assert(!std::is_same<typename std::decay<T>::type, char*>::value, "Calling operator<<(CSHA3_512, char*) is probably not what you want");
+    static_assert(!std::is_same<typename std::decay<T>::type, unsigned char*>::value, "Calling operator<<(CSHA3_512, unsigned char*) is probably not what you want");
+    static_assert(!std::is_same<typename std::decay<T>::type, const char*>::value, "Calling operator<<(CSHA3_512, const char*) is probably not what you want");
+    static_assert(!std::is_same<typename std::decay<T>::type, const unsigned char*>::value, "Calling operator<<(CSHA3_512, const unsigned char*) is probably not what you want");
     hasher.Write((const unsigned char*)&data, sizeof(data));
     return hasher;
 }
 
 #ifndef WIN32
-void AddSockaddr(CSHA512& hasher, const struct sockaddr *addr)
+void AddSockaddr(CSHA3_512& hasher, const struct sockaddr *addr)
 {
     if (addr == nullptr) return;
     switch (addr->sa_family) {
@@ -131,7 +131,7 @@ void AddSockaddr(CSHA512& hasher, const struct sockaddr *addr)
     }
 }
 
-void AddFile(CSHA512& hasher, const char *path)
+void AddFile(CSHA3_512& hasher, const char *path)
 {
     struct stat sb = {};
     int f = open(path, O_RDONLY);
@@ -151,7 +151,7 @@ void AddFile(CSHA512& hasher, const char *path)
     }
 }
 
-void AddPath(CSHA512& hasher, const char *path)
+void AddPath(CSHA3_512& hasher, const char *path)
 {
     struct stat sb = {};
     if (stat(path, &sb) == 0) {
@@ -163,7 +163,7 @@ void AddPath(CSHA512& hasher, const char *path)
 
 #if HAVE_SYSCTL
 template<int... S>
-void AddSysctl(CSHA512& hasher)
+void AddSysctl(CSHA3_512& hasher)
 {
     int CTL[sizeof...(S)] = {S...};
     unsigned char buffer[65536];
@@ -180,13 +180,13 @@ void AddSysctl(CSHA512& hasher)
 #endif
 
 #ifdef HAVE_GETCPUID
-void inline AddCPUID(CSHA512& hasher, uint32_t leaf, uint32_t subleaf, uint32_t& ax, uint32_t& bx, uint32_t& cx, uint32_t& dx)
+void inline AddCPUID(CSHA3_512& hasher, uint32_t leaf, uint32_t subleaf, uint32_t& ax, uint32_t& bx, uint32_t& cx, uint32_t& dx)
 {
     GetCPUID(leaf, subleaf, ax, bx, cx, dx);
     hasher << leaf << subleaf << ax << bx << cx << dx;
 }
 
-void AddAllCPUID(CSHA512& hasher)
+void AddAllCPUID(CSHA3_512& hasher)
 {
     uint32_t ax, bx, cx, dx;
     // Iterate over all standard leaves
@@ -222,7 +222,7 @@ void AddAllCPUID(CSHA512& hasher)
 #endif
 } // namespace
 
-void RandAddDynamicEnv(CSHA512& hasher)
+void RandAddDynamicEnv(CSHA3_512& hasher)
 {
     RandAddSeedPerfmon(hasher);
 
@@ -303,7 +303,7 @@ void RandAddDynamicEnv(CSHA512& hasher)
     free(addr);
 }
 
-void RandAddStaticEnv(CSHA512& hasher)
+void RandAddStaticEnv(CSHA3_512& hasher)
 {
     // Some compile-time static properties
     hasher << (CHAR_MIN < 0) << sizeof(void*) << sizeof(long) << sizeof(int);

@@ -6,15 +6,13 @@
 #include <key.h>
 
 #include <crypto/common.h>
-#include <crypto/hmac_sha3_512.h>
 #include <random.h>
-
-#include <ed25519.h>
 
 void CKey::MakeNewKey() {
     CPrivKey seed(32);
     GetStrongRandBytes(seed.data(), seed.size());
     ed25519_create_privkey(keydata.data(), seed.data());
+    ed25519_get_pubkey(pubkey, keydata.data());
     fValid = true;
 }
 
@@ -28,10 +26,8 @@ CPrivKey CKey::GetPrivKey() const {
 
 CPubKey CKey::GetPubKey() const {
     assert(fValid);
-    unsigned char vch[32];
-    ed25519_get_pubkey(&vch[0], keydata.data());
     CPubKey result;
-    result.Set32(&vch[0]);
+    result.Set32(pubkey);
     return result;
 }
 
@@ -39,11 +35,7 @@ bool CKey::Sign(const uint512 &hash, std::vector<unsigned char>& vchSig, bool gr
     if (!fValid)
         return false;
     vchSig.resize(CPubKey::SIGNATURE_SIZE);
-
-    unsigned char vch[32];
-    ed25519_get_pubkey(&vch[0], keydata.data());
-    ed25519_sign(vchSig.data(), hash.begin(), hash.size(), &vch[0], keydata.data());
-    
+    ed25519_sign(vchSig.data(), hash.begin(), hash.size(), pubkey, keydata.data());
     return true;
 }
 
@@ -63,18 +55,15 @@ bool CKey::VerifyPubKey(const CPubKey& pubkey) const {
 bool CKey::SignCompact(const uint512 &hash, std::vector<unsigned char>& vchSig) const {
     if (!fValid)
         return false;
-
     // Enough to contain public key + signature
     vchSig.resize(CPubKey::JOINED_SIGNATURE_SIZE);
-
-    unsigned char *pubkey = vchSig.data();
+    // Pointer to beginning of signature
     unsigned char *signature = vchSig.data() + 32;
-
-    // Get public key
-    ed25519_get_pubkey(pubkey, keydata.data());
+    // Copy public key
+    memcpy(vchSig.data(), pubkey, 32);
     // Make signature
     ed25519_sign(signature, hash.begin(), hash.size(), pubkey, keydata.data());
-
+    // Verify and return
     return ed25519_verify(signature, hash.begin(), hash.size(), pubkey) != 0;
 }
 
@@ -86,6 +75,8 @@ bool CKey::Load(const CPrivKey &privkey, const CPubKey &vchPubKey, bool fSkipChe
     // Copy private key
     //  We only really need the first 32 bytes
     memcpy((unsigned char*)begin(), privkey.data(), 32);
+    // Cached public key
+    ed25519_get_pubkey(pubkey, keydata.data());
 
     fValid = true;
     if (fSkipCheck)
@@ -94,68 +85,41 @@ bool CKey::Load(const CPrivKey &privkey, const CPubKey &vchPubKey, bool fSkipChe
     return VerifyPubKey(vchPubKey);
 }
 
-bool CKey::Derive(CKey& keyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const {
-    assert(IsValid());
-    std::vector<unsigned char, secure_allocator<unsigned char>> vout(64);
-    if ((nChild >> 31) == 0) {
-        CPubKey pubkey = GetPubKey();
-        assert(pubkey.size() == CPubKey::SIZE);
-        BIP32Hash(cc, nChild, *pubkey.begin(), pubkey.begin()+1, vout.data());
-    } else {
-        assert(size() == 32);
-        BIP32Hash(cc, nChild, 0, begin(), vout.data());
-    }
-    memcpy(ccChild.begin(), vout.data()+32, 32);
-    memcpy((unsigned char*)keyChild.begin(), begin(), 32);
-    ed25519_add_scalar(nullptr, (unsigned char*)keyChild.begin(), vout.data());
-    keyChild.fValid = true;
+bool CExtKey::Derive(CExtKey &out, unsigned int _nChild) const {
+    keychain_private_derive(&ctx, &out.ctx, _nChild);
     return true;
 }
 
-bool CExtKey::Derive(CExtKey &out, unsigned int _nChild) const {
-    out.nDepth = nDepth + 1;
-    CKeyID id = key.GetPubKey().GetID();
-    memcpy(&out.vchFingerprint[0], &id, 4);
-    out.nChild = _nChild;
-    return key.Derive(out.key, out.chaincode, _nChild, chaincode);
-}
-
 void CExtKey::SetSeed(const unsigned char *seed, unsigned int nSeedLen) {
-    static const unsigned char hashkey[] = {'E','D','2','5','5','1','9',' ','s','e','e','d'};
-    std::vector<unsigned char, secure_allocator<unsigned char>> vout(64);
-    CHMAC_SHA3_512(hashkey, sizeof(hashkey)).Write(seed, nSeedLen).Finalize(vout.data());
-    key.Set(vout.data(), vout.data() + 32);
-    memcpy(chaincode.begin(), vout.data() + 32, 32);
-    nDepth = 0;
-    nChild = 0;
-    memset(vchFingerprint, 0, sizeof(vchFingerprint));
+    keychain_private_init(&ctx, seed, nSeedLen);
 }
 
 CExtPubKey CExtKey::Neuter() const {
-    CExtPubKey ret;
-    ret.nDepth = nDepth;
-    memcpy(&ret.vchFingerprint[0], &vchFingerprint[0], 4);
-    ret.nChild = nChild;
-    ret.pubkey = key.GetPubKey();
-    ret.chaincode = chaincode;
-    return ret;
+    KEYCHAIN_PUBLIC_CTX neutered;
+    keychain_private_neuter(&ctx, &neutered);
+    CExtPubKey pub;
+    pub.Set(neutered);
+    return pub;
 }
 
 void CExtKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {
-    code[0] = nDepth;
-    memcpy(code+1, vchFingerprint, 4);
-    code[5] = (nChild >> 24) & 0xFF; code[6] = (nChild >> 16) & 0xFF;
-    code[7] = (nChild >>  8) & 0xFF; code[8] = (nChild >>  0) & 0xFF;
-    memcpy(code+9, chaincode.begin(), 32);
-    code[41] = 0;
-    assert(key.size() == 32);
-    memcpy(code+42, key.begin(), 32);
+    keychain_private_export(&ctx, code);
 }
 
 void CExtKey::Decode(const unsigned char code[BIP32_EXTKEY_SIZE]) {
-    nDepth = code[0];
-    memcpy(vchFingerprint, code+1, 4);
-    nChild = (code[5] << 24) | (code[6] << 16) | (code[7] << 8) | code[8];
-    memcpy(chaincode.begin(), code+9, 32);
-    key.Set(code+42, code+BIP32_EXTKEY_SIZE);
+    keychain_private_import(&ctx, code);
+}
+
+CKey CExtKey::GetKey() const {
+    CKey key;
+    const unsigned char *raw = keychain_private_get_key(&ctx);
+    key.Set(raw, raw + 32);
+    return key;
+}
+
+CPubKey CExtKey::GetPubKey() const {
+    CPubKey pubKey;
+    const unsigned char *raw = keychain_private_get_pubkey(&ctx);
+    pubKey.Set32(raw);
+    return pubKey;
 }

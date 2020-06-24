@@ -1,5 +1,5 @@
 #include "ed25519.h"
-#include "sha3.h"
+#include "hash/sha3.h"
 #include "ge.h"
 
 void ed25519_get_pubkey(unsigned char *public_key, const unsigned char *private_key) {

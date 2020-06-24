@@ -269,12 +269,8 @@ class BIP32PubkeyProvider final : public PubkeyProvider
     bool GetExtKey(const SigningProvider& arg, CExtKey& ret) const
     {
         CKey key;
-        if (!arg.GetKey(m_root_extkey.pubkey.GetID(), key)) return false;
-        ret.nDepth = m_root_extkey.nDepth;
-        std::copy(m_root_extkey.vchFingerprint, m_root_extkey.vchFingerprint + sizeof(ret.vchFingerprint), ret.vchFingerprint);
-        ret.nChild = m_root_extkey.nChild;
-        ret.chaincode = m_root_extkey.chaincode;
-        ret.key = key;
+        if (!arg.GetKey(m_root_extkey.GetPubKey().GetID(), key)) return false;
+        ret = m_root_extkey.Rebuild(key);
         return true;
     }
 
@@ -305,7 +301,7 @@ public:
     {
         // Info of parent of the to be derived pubkey
         KeyOriginInfo parent_info;
-        CKeyID keyid = m_root_extkey.pubkey.GetID();
+        CKeyID keyid = m_root_extkey.GetPubKey().GetID();
         std::copy(keyid.begin(), keyid.begin() + sizeof(parent_info.fingerprint), parent_info.fingerprint);
         parent_info.path = m_path;
 
@@ -326,7 +322,7 @@ public:
                 final_extkey = parent_extkey;
                 if (m_derive == DeriveType::UNHARDENED) der = parent_extkey.Derive(final_extkey, pos);
             }
-        } else if (m_cached_xpub.pubkey.IsValid() && m_derive != DeriveType::HARDENED) {
+        } else if (m_cached_xpub.GetPubKey().IsValid() && m_derive != DeriveType::HARDENED) {
             parent_extkey = final_extkey = m_cached_xpub;
             if (m_derive == DeriveType::UNHARDENED) der = parent_extkey.Derive(final_extkey, pos);
         } else if (IsHardened()) {
@@ -348,12 +344,12 @@ public:
         assert(der);
 
         final_info_out = final_info_out_tmp;
-        key_out = final_extkey.pubkey;
+        key_out = final_extkey.GetPubKey();
 
         // We rely on the consumer to check that m_derive isn't HARDENED as above
         // But we can't have already cached something in case we read something from the cache
         // and parent_extkey isn't actually the parent.
-        if (!m_cached_xpub.pubkey.IsValid()) m_cached_xpub = parent_extkey;
+        if (!m_cached_xpub.GetPubKey().IsValid()) m_cached_xpub = parent_extkey;
 
         if (write_cache) {
             // Only cache parent if there is any unhardened derivation
@@ -392,7 +388,7 @@ public:
         if (!GetDerivedExtKey(arg, extkey)) return false;
         if (m_derive == DeriveType::UNHARDENED) extkey.Derive(extkey, pos);
         if (m_derive == DeriveType::HARDENED) extkey.Derive(extkey, pos | 0x80000000UL);
-        key = extkey.key;
+        key = extkey.GetKey();
         return true;
     }
 };
@@ -772,7 +768,7 @@ std::unique_ptr<PubkeyProvider> ParsePubkeyInner(uint32_t key_exp_index, const S
     }
     CExtKey extkey = DecodeExtKey(str);
     CExtPubKey extpubkey = DecodeExtPubKey(str);
-    if (!extkey.key.IsValid() && !extpubkey.pubkey.IsValid()) {
+    if (!extkey.GetKey().IsValid() && !extpubkey.GetPubKey().IsValid()) {
         error = strprintf("key '%s' is not valid", str);
         return nullptr;
     }
@@ -786,9 +782,9 @@ std::unique_ptr<PubkeyProvider> ParsePubkeyInner(uint32_t key_exp_index, const S
         type = DeriveType::HARDENED;
     }
     if (!ParseKeyPath(split, path, error)) return nullptr;
-    if (extkey.key.IsValid()) {
+    if (extkey.GetKey().IsValid()) {
         extpubkey = extkey.Neuter();
-        out.keys.emplace(extpubkey.pubkey.GetID(), extkey.key);
+        out.keys.emplace(extpubkey.GetPubKey().GetID(), extkey.GetKey());
     }
     return MakeUnique<BIP32PubkeyProvider>(key_exp_index, extpubkey, std::move(path), type);
 }

@@ -11,11 +11,11 @@
 #include <serialize.h>
 #include <support/allocators/secure.h>
 #include <uint256.h>
+#include <ed25519.h>
+#include <keychain.h>
 
 #include <stdexcept>
 #include <vector>
-
-const unsigned int BIP32_EXT_PRIVKEY_SIZE = 106;
 
 /**
  * secure_allocator is defined in allocators.h
@@ -37,6 +37,8 @@ private:
 
     //! The actual byte data
     std::vector<unsigned char, secure_allocator<unsigned char> > keydata;
+    //! Cached public key
+    unsigned char pubkey[32];
 
 public:
     //! Construct an invalid private key.
@@ -48,7 +50,7 @@ public:
 
     friend bool operator==(const CKey& a, const CKey& b)
     {
-        return memcmp(a.keydata.data(), b.keydata.data(), a.size()) == 0;
+        return memcmp(a.keydata.data(), b.keydata.data(), a.size()) == 0 && memcmp(a.pubkey, b.pubkey, sizeof(a)) == 0;
     }
 
     //! Initialize using begin and end iterators to byte data.
@@ -59,6 +61,7 @@ public:
             fValid = false;
         } else {
             memcpy(keydata.data(), (unsigned char*)&pbegin[0], keydata.size());
+            ed25519_get_pubkey(pubkey, keydata.data());
             fValid = true;
         }
     }
@@ -97,9 +100,6 @@ public:
      */
     bool SignCompact(const uint512& hash, std::vector<unsigned char>& vchSig) const;
 
-    //! Derive BIP32 child key.
-    bool Derive(CKey& keyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;
-
     /**
      * Verify thoroughly whether a private key and a public key match.
      * This is done using a different mechanism than just regenerating it.
@@ -110,27 +110,31 @@ public:
     bool Load(const CPrivKey& privkey, const CPubKey& vchPubKey, bool fSkipCheck);
 };
 
-struct CExtKey {
-    unsigned char nDepth;
-    unsigned char vchFingerprint[4];
-    unsigned int nChild;
-    ChainCode chaincode;
-    CKey key;
-
-    friend bool operator==(const CExtKey& a, const CExtKey& b)
+class CExtKey {
+private:
+    KEYCHAIN_PRIVATE_CTX ctx;
+public:
+    friend bool operator==(const CExtKey &a, const CExtKey &b)
     {
-        return a.nDepth == b.nDepth &&
-            memcmp(&a.vchFingerprint[0], &b.vchFingerprint[0], sizeof(vchFingerprint)) == 0 &&
-            a.nChild == b.nChild &&
-            a.chaincode == b.chaincode &&
-            a.key == b.key;
+        return keychain_private_equals(&a.ctx, &b.ctx);
     }
 
+    //! Replace derivation context
+    void Set(KEYCHAIN_PRIVATE_CTX &ctx) {
+        this->ctx = ctx;
+    }
     void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
     void Decode(const unsigned char code[BIP32_EXTKEY_SIZE]);
+    //! Derive new extended key
     bool Derive(CExtKey& out, unsigned int nChild) const;
+    //! Remove secret and construct extended public key
     CExtPubKey Neuter() const;
+    //! Initialize context with new seed
     void SetSeed(const unsigned char* seed, unsigned int nSeedLen);
+    //! Get current private key
+    CKey GetKey() const;
+    //! Get current public key
+    CPubKey GetPubKey() const;
 };
 
 #endif // BITCOIN_KEY_H

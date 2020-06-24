@@ -43,7 +43,7 @@
  * - RandAddPeriodic() seeds everything that fast seeding includes, but additionally:
  *   - A high-precision timestamp
  *   - Dynamic environment data (performance monitoring, ...)
- *   - Strengthen the entropy for 10 ms using repeated SHA512.
+ *   - Strengthen the entropy for 10 ms using repeated SHA3-512.
  *   This is run once every minute.
  *
  * On first use of the RNG (regardless of what function is called first), all entropy
@@ -51,9 +51,9 @@
  * - 256 bits from the hardware RNG (rdseed or rdrand) when available.
  * - Dynamic environment data (performance monitoring, ...)
  * - Static environment data
- * - Strengthen the entropy for 100 ms using repeated SHA512.
+ * - Strengthen the entropy for 100 ms using repeated SHA3-512.
  *
- * When mixing in new entropy, H = SHA512(entropy || old_rng_state) is computed, and
+ * When mixing in new entropy, H = SHA3-512(entropy || old_rng_state) is computed, and
  * (up to) the first 32 bytes of H are produced as output, while the last 32 bytes
  * become the new RNG state.
 */
