@@ -55,7 +55,7 @@ void hmac_sha3_224_init(hmac_sha224_ctx *ctx, const unsigned char *key,
     } else {
         if (key_size > SHA3_224_BLOCK_LENGTH){
             num = SHA3_224_DIGEST_LENGTH;
-            sha3_384(key, key_size, key_temp);
+            sha3_224(key, key_size, key_temp);
             key_used = key_temp;
         } else { /* key_size > SHA3_224_BLOCK_LENGTH */
             key_used = key;
@@ -125,7 +125,7 @@ void hmac_sha3_224(const unsigned char *key, unsigned int key_size,
 
 /* HMAC-SHA3-256 functions */
 
-void hmac_sha3_256_init(hmac_sha256_ctx *ctx, const unsigned char *key,
+void hmac_sha3_256_init(hmac_sha3_256_ctx *ctx, const unsigned char *key,
                       unsigned int key_size)
 {
     unsigned int fill;
@@ -172,7 +172,7 @@ void hmac_sha3_256_init(hmac_sha256_ctx *ctx, const unsigned char *key,
            sizeof(SHA3_CTX));
 }
 
-void hmac_sha3_256_reinit(hmac_sha256_ctx *ctx)
+void hmac_sha3_256_reinit(hmac_sha3_256_ctx *ctx)
 {
     memcpy(&ctx->ctx_inside, &ctx->ctx_inside_reinit,
            sizeof(SHA3_CTX));
@@ -180,13 +180,13 @@ void hmac_sha3_256_reinit(hmac_sha256_ctx *ctx)
            sizeof(SHA3_CTX));
 }
 
-void hmac_sha3_256_update(hmac_sha256_ctx *ctx, const unsigned char *message,
+void hmac_sha3_256_update(hmac_sha3_256_ctx *ctx, const unsigned char *message,
                         unsigned int message_len)
 {
     sha3_Update(&ctx->ctx_inside, message, message_len);
 }
 
-void hmac_sha3_256_final(hmac_sha256_ctx *ctx, unsigned char *mac,
+void hmac_sha3_256_final(hmac_sha3_256_ctx *ctx, unsigned char *mac,
                        unsigned int mac_size)
 {
     unsigned char digest_inside[SHA3_256_DIGEST_LENGTH];
@@ -202,7 +202,7 @@ void hmac_sha3_256(const unsigned char *key, unsigned int key_size,
           const unsigned char *message, unsigned int message_len,
           unsigned char *mac, unsigned mac_size)
 {
-    hmac_sha256_ctx ctx;
+    hmac_sha3_256_ctx ctx;
 
     hmac_sha3_256_init(&ctx, key, key_size);
     hmac_sha3_256_update(&ctx, message, message_len);
@@ -211,7 +211,7 @@ void hmac_sha3_256(const unsigned char *key, unsigned int key_size,
 
 /* HMAC-SHA3-384 functions */
 
-void hmac_sha3_384_init(hmac_sha384_ctx *ctx, const unsigned char *key,
+void hmac_sha3_384_init(hmac_sha3_384_ctx *ctx, const unsigned char *key,
                       unsigned int key_size)
 {
     unsigned int fill;
@@ -258,7 +258,7 @@ void hmac_sha3_384_init(hmac_sha384_ctx *ctx, const unsigned char *key,
            sizeof(SHA3_CTX));
 }
 
-void hmac_sha3_384_reinit(hmac_sha384_ctx *ctx)
+void hmac_sha3_384_reinit(hmac_sha3_384_ctx *ctx)
 {
     memcpy(&ctx->ctx_inside, &ctx->ctx_inside_reinit,
            sizeof(SHA3_CTX));
@@ -266,13 +266,13 @@ void hmac_sha3_384_reinit(hmac_sha384_ctx *ctx)
            sizeof(SHA3_CTX));
 }
 
-void hmac_sha3_384_update(hmac_sha384_ctx *ctx, const unsigned char *message,
+void hmac_sha3_384_update(hmac_sha3_384_ctx *ctx, const unsigned char *message,
                         unsigned int message_len)
 {
     sha3_Update(&ctx->ctx_inside, message, message_len);
 }
 
-void hmac_sha3_384_final(hmac_sha384_ctx *ctx, unsigned char *mac,
+void hmac_sha3_384_final(hmac_sha3_384_ctx *ctx, unsigned char *mac,
                        unsigned int mac_size)
 {
     unsigned char digest_inside[SHA3_384_DIGEST_LENGTH];
@@ -288,7 +288,7 @@ void hmac_sha3_384(const unsigned char *key, unsigned int key_size,
           const unsigned char *message, unsigned int message_len,
           unsigned char *mac, unsigned mac_size)
 {
-    hmac_sha384_ctx ctx;
+    hmac_sha3_384_ctx ctx;
 
     hmac_sha3_384_init(&ctx, key, key_size);
     hmac_sha3_384_update(&ctx, message, message_len);
@@ -297,7 +297,7 @@ void hmac_sha3_384(const unsigned char *key, unsigned int key_size,
 
 /* HMAC-SHA3-512 functions */
 
-void hmac_sha3_512_init(hmac_sha512_ctx *ctx, const unsigned char *key,
+void hmac_sha3_512_init(hmac_sha3_512_ctx *ctx, const unsigned char *key,
                       unsigned int key_size)
 {
     unsigned int fill;
@@ -344,7 +344,7 @@ void hmac_sha3_512_init(hmac_sha512_ctx *ctx, const unsigned char *key,
            sizeof(SHA3_CTX));
 }
 
-void hmac_sha3_512_reinit(hmac_sha512_ctx *ctx)
+void hmac_sha3_512_reinit(hmac_sha3_512_ctx *ctx)
 {
     memcpy(&ctx->ctx_inside, &ctx->ctx_inside_reinit,
            sizeof(SHA3_CTX));
@@ -352,13 +352,13 @@ void hmac_sha3_512_reinit(hmac_sha512_ctx *ctx)
            sizeof(SHA3_CTX));
 }
 
-void hmac_sha3_512_update(hmac_sha512_ctx *ctx, const unsigned char *message,
+void hmac_sha3_512_update(hmac_sha3_512_ctx *ctx, const unsigned char *message,
                         unsigned int message_len)
 {
     sha3_Update(&ctx->ctx_inside, message, message_len);
 }
 
-void hmac_sha3_512_final(hmac_sha512_ctx *ctx, unsigned char *mac,
+void hmac_sha3_512_final(hmac_sha3_512_ctx *ctx, unsigned char *mac,
                        unsigned int mac_size)
 {
     unsigned char digest_inside[SHA3_512_DIGEST_LENGTH];
@@ -374,7 +374,7 @@ void hmac_sha3_512(const unsigned char *key, unsigned int key_size,
           const unsigned char *message, unsigned int message_len,
           unsigned char *mac, unsigned mac_size)
 {
-    hmac_sha512_ctx ctx;
+    hmac_sha3_512_ctx ctx;
 
     hmac_sha3_512_init(&ctx, key, key_size);
     hmac_sha3_512_update(&ctx, message, message_len);

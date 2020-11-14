@@ -7,7 +7,7 @@
 static void BIP32Hash(const unsigned char chainCode[32], unsigned int nChild, unsigned char header, const unsigned char data[32], unsigned char output[64])
 {
     unsigned char num[4];
-    hmac_sha512_ctx hmac_ctx;
+    hmac_sha3_512_ctx hmac_ctx;
 
     num[0] = (nChild >> 24) & 0xFF;
     num[1] = (nChild >> 16) & 0xFF;
@@ -34,12 +34,17 @@ void keychain_private_rebuild(const KEYCHAIN_PUBLIC_CTX *from, const unsigned ch
 void keychain_private_init(KEYCHAIN_PRIVATE_CTX *ctx, const unsigned char *seed, size_t seed_len) {
     static const unsigned char hashkey[] = {'E','D','2','5','5','1','9',' ','s','e','e','d'};
     unsigned char key_mac[64];
-    hmac_sha512_ctx hmac_ctx;
+    hmac_sha3_512_ctx hmac_ctx;
 
     // Calculate hmac for given seed using hardcoded hash key
     hmac_sha3_512_init(&hmac_ctx, hashkey, sizeof(hashkey));
     hmac_sha3_512_update(&hmac_ctx, seed, seed_len);
     hmac_sha3_512_final(&hmac_ctx, key_mac, sizeof(key_mac));
+
+    // Clamping
+    key_mac[0] &= 248;
+    key_mac[31] &= 127;
+    key_mac[31] |= 64;
 
     // Copy first part of hash to be used as key
     memcpy(ctx->key, key_mac, 32);
@@ -70,6 +75,7 @@ void keychain_private_derive(const KEYCHAIN_PRIVATE_CTX *ctx, KEYCHAIN_PRIVATE_C
     //   First 4 bytes of RIPEMD160(SHA3-256(0x03 + public key))
     sha3_256_Init(&sha3_ctx);
     sha3_Update(&sha3_ctx, &prefix, 1);
+    sha3_Update(&sha3_ctx, ctx->pubkey, 32);
     sha3_Final(&sha3_ctx, tmp_hash);
     ripemd160(tmp_hash, sizeof(tmp_hash), public_key_id);
     memcpy(child_ctx->vchFingerprint, public_key_id, 4);
@@ -87,7 +93,6 @@ void keychain_private_derive(const KEYCHAIN_PRIVATE_CTX *ctx, KEYCHAIN_PRIVATE_C
     memcpy(child_ctx->chaincode, bip32_hash+32, 32);
 
     // Generate children private key
-    //  a = n + t
     memcpy(child_ctx->key, ctx->key, 32);
     ed25519_add_scalar(NULL, child_ctx->key, bip32_hash);
 
@@ -157,7 +162,11 @@ const unsigned char * keychain_private_get_pubkey(const KEYCHAIN_PRIVATE_CTX *ct
 }
 
 void keychain_public_derive(const KEYCHAIN_PUBLIC_CTX *ctx, KEYCHAIN_PUBLIC_CTX *child_ctx, unsigned int nChild) {
+    SHA3_CTX sha3_ctx;
+    unsigned char prefix = 0x03;
     unsigned char bip32_hash[64];
+    unsigned char tmp_hash[SHA3_256_DIGEST_LENGTH];
+    unsigned char public_key_id[RIPEMD160_DIGEST_LENGTH];
 
     // Only non-hardened generation possible here
     assert((nChild >> 31) == 0);
@@ -167,9 +176,17 @@ void keychain_public_derive(const KEYCHAIN_PUBLIC_CTX *ctx, KEYCHAIN_PUBLIC_CTX 
     memcpy(child_ctx->chaincode, bip32_hash+32, 32);
 
     // Generate children public key
-    // A = nB + T
     memcpy(child_ctx->pubkey, ctx->pubkey, 32);
     ed25519_add_scalar(child_ctx->pubkey, NULL, bip32_hash);
+
+    // Get key fingerprint
+    //   First 4 bytes of RIPEMD160(SHA3-256(0x03 + public key))
+    sha3_256_Init(&sha3_ctx);
+    sha3_Update(&sha3_ctx, &prefix, 1);
+    sha3_Update(&sha3_ctx, ctx->pubkey, 32);
+    sha3_Final(&sha3_ctx, tmp_hash);
+    ripemd160(tmp_hash, sizeof(tmp_hash), public_key_id);
+    memcpy(child_ctx->vchFingerprint, public_key_id, 4);
 }
 
 void keychain_public_export(const KEYCHAIN_PUBLIC_CTX *ctx, unsigned char binary[BIP32_EXTKEY_SIZE]) {
