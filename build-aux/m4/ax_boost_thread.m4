@@ -141,6 +141,9 @@ AC_DEFUN([AX_BOOST_THREAD],
                         BOOST_LDFLAGS="-pthread $BOOST_LDFLAGS"
                         break;
                         ;;
+                    *android* )
+                        break;
+                        ;;
                     xsolaris )
                         BOOST_THREAD_LIB="$BOOST_THREAD_LIB -lpthread"
                         break;
