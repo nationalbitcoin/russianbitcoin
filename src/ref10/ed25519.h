@@ -44,7 +44,7 @@ void keychain_public_import(KEYCHAIN_PUBLIC_CTX *ctx, const unsigned char binary
 int keychain_public_equals(const KEYCHAIN_PUBLIC_CTX *ctx1, const KEYCHAIN_PUBLIC_CTX *ctx2);
 const unsigned char * keychain_public_get_pubkey(const KEYCHAIN_PUBLIC_CTX *ctx);
 
-inline int ed25519_consttime_equal_4(const unsigned char *x, const unsigned char *y) {
+static inline int ed25519_consttime_equal_4(const unsigned char *x, const unsigned char *y) {
     unsigned char r = 0;
 
     r = x[0] ^ y[0];
@@ -57,7 +57,7 @@ inline int ed25519_consttime_equal_4(const unsigned char *x, const unsigned char
     return !r;
 }
 
-inline int ed25519_consttime_equal_32(const unsigned char *x, const unsigned char *y) {
+static inline int ed25519_consttime_equal_32(const unsigned char *x, const unsigned char *y) {
     unsigned char r = 0;
 
     r = x[0] ^ y[0];
