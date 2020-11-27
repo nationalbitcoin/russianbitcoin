@@ -28,6 +28,7 @@ typedef struct KEYCHAIN_PUBLIC_CTX {
     unsigned char pubkey[32];
 } KEYCHAIN_PUBLIC_CTX;
 
+void BIP32Hash(const unsigned char chainCode[32], unsigned int nChild, unsigned char header, const unsigned char data[32], unsigned char output[64]);
 void keychain_private_rebuild(const KEYCHAIN_PUBLIC_CTX *from, const unsigned char key[32], KEYCHAIN_PRIVATE_CTX *to);
 void keychain_private_init(KEYCHAIN_PRIVATE_CTX *ctx, const unsigned char *seed, size_t seed_len);
 void keychain_private_derive(const KEYCHAIN_PRIVATE_CTX *ctx, KEYCHAIN_PRIVATE_CTX *child_ctx, unsigned int nChild);
