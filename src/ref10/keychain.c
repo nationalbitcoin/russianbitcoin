@@ -68,8 +68,11 @@ void keychain_private_derive(const KEYCHAIN_PRIVATE_CTX *ctx, KEYCHAIN_PRIVATE_C
     unsigned char tmp_hash[SHA3_256_DIGEST_LENGTH];
     unsigned char public_key_id[RIPEMD160_DIGEST_LENGTH];
 
-    // Next children
-    child_ctx->nChild = ctx->nChild + 1;
+    // Set depth
+    child_ctx->nDepth = ctx->nDepth + 1;
+
+    // Set child index
+    child_ctx->nChild = nChild;
     
     // Get key fingerprint
     //   First 4 bytes of RIPEMD160(SHA3-256(0x03 + public key))
@@ -178,6 +181,12 @@ void keychain_public_derive(const KEYCHAIN_PUBLIC_CTX *ctx, KEYCHAIN_PUBLIC_CTX 
     // Generate children public key
     memcpy(child_ctx->pubkey, ctx->pubkey, 32);
     ed25519_add_scalar(child_ctx->pubkey, NULL, bip32_hash);
+
+    // Set depth
+    child_ctx->nDepth = ctx->nDepth + 1;
+
+    // Set child index
+    child_ctx->nChild = nChild;
 
     // Get key fingerprint
     //   First 4 bytes of RIPEMD160(SHA3-256(0x03 + public key))
