@@ -12,6 +12,7 @@
 #include <primitives/block.h>
 #include <tinyformat.h>
 #include <uint256.h>
+#include <util/moneystr.h>
 
 #include <vector>
 
@@ -186,6 +187,12 @@ public:
     //! (memory only) Maximum nTime in the chain up to and including this block.
     unsigned int nTimeMax{0};
 
+    //! Amount of generated satoshis in this chain
+    int64_t nMoneySupply{0};
+
+    //! Amount of transacted satoshis in this chain
+    int64_t nMoneyTransacted{0};
+
     CBlockIndex()
     {
     }
@@ -272,8 +279,8 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(pprev=%p, nHeight=%d, merkle=%s, hashBlock=%s)",
-            pprev, nHeight,
+        return strprintf("CBlockIndex(pprev=%p, nHeight=%d, nMoneySupply=%s, nMoneyTransacted=%s, merkle=%s, hashBlock=%s)",
+            pprev, nHeight, FormatMoney(nMoneySupply), FormatMoney(nMoneyTransacted),
             hashMerkleRoot.ToString(),
             GetBlockHash().ToString());
     }
@@ -341,6 +348,12 @@ public:
         if (obj.nStatus & (BLOCK_HAVE_DATA | BLOCK_HAVE_UNDO)) READWRITE(VARINT_MODE(obj.nFile, VarIntMode::NONNEGATIVE_SIGNED));
         if (obj.nStatus & BLOCK_HAVE_DATA) READWRITE(VARINT(obj.nDataPos));
         if (obj.nStatus & BLOCK_HAVE_UNDO) READWRITE(VARINT(obj.nUndoPos));
+
+        // Generated satoshis
+        READWRITE(obj.nMoneySupply);
+
+        // Transacted satoshis
+        READWRITE(obj.nMoneyTransacted);
 
         // block header
         READWRITE(obj.nVersion);

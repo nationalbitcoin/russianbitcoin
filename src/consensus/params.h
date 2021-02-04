@@ -74,6 +74,7 @@ struct Params {
     uint32_t nMinerConfirmationWindow;
     BIP9Deployment vDeployments[MAX_VERSION_BITS_DEPLOYMENTS];
     /** Proof of work parameters */
+    CAmount nBaseSubsidy;
     CAmount nPremineSubsidy;
     CAmount nSubsidyLimit;
     int nSubsidyAdjustmentHistory;

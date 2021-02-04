@@ -1238,22 +1238,22 @@ CAmount AdjustReward(const CBlockIndex* pindex, CAmount blockReward, const Conse
     return std::min(blockReward, consensusParams.nSubsidyLimit);
 }
 
-CAmount GetBlockSubsidy(unsigned int nBits, const Consensus::Params& consensusParams)
+CAmount GetBlockSubsidy(unsigned int nBits, unsigned int nTime, const Consensus::Params& consensusParams)
 {
-    // Maximum value of block subsidy
-    arith_uint256 nSubsidyLimit = consensusParams.nSubsidyLimit;
+    // Base value of block subsidy
+    arith_uint256 nBaseSubsidy = (nTime > 1614049200) ? consensusParams.nBaseSubsidy : consensusParams.nSubsidyLimit;
 
     // Actual value of subsidy is cut in half every 16x multiply of difficulty
     //
-    // (nSubsidyLimit / nSubsidy) ** 4 == bnProofOfWorkLimit / bnTarget
+    // (nBaseSubsidy / nSubsidy) ** 4 == bnProofOfWorkLimit / bnTarget
     //
     // Human readable form:
     //
-    // nSubsidy = 100 / (diff ^ 1/4)
+    // nSubsidy = nBaseSubsidy / (diff ^ 1/4)
     //
     // Please note that we're using bisection to find an approximate solutuion
     arith_uint256 bnLowerBound = CENT;
-    arith_uint256 bnUpperBound = nSubsidyLimit;
+    arith_uint256 bnUpperBound = nBaseSubsidy;
 
     // Current block target
     arith_uint256 nTarget;
@@ -1267,7 +1267,7 @@ CAmount GetBlockSubsidy(unsigned int nBits, const Consensus::Params& consensusPa
     arith_uint256 nUintDifficulty = nInitialTarget * 1000000 / nTarget;
 
     // Value to compare with
-    const arith_uint256 nSubsidyPow4 = nSubsidyLimit * nSubsidyLimit * nSubsidyLimit * nSubsidyLimit;
+    const arith_uint256 nSubsidyPow4 = nBaseSubsidy * nBaseSubsidy * nBaseSubsidy * nBaseSubsidy;
 
     // Find new value of block subsidy at current block target
     while (bnLowerBound + CENT <= bnUpperBound)
@@ -1458,8 +1458,8 @@ void static InvalidChainFound(CBlockIndex* pindexNew) EXCLUSIVE_LOCKS_REQUIRED(c
         pindexBestHeader = ::ChainActive().Tip();
     }
 
-    LogPrintf("%s: invalid block=%s  height=%d  log2_work=%.8g  date=%s\n", __func__,
-      pindexNew->GetBlockHash().ToString(), pindexNew->nHeight,
+    LogPrintf("%s: invalid block=%s  height=%d  moneysupply=%s  moneytransacted=%s log2_work=%.8g  date=%s\n", __func__,
+      pindexNew->GetBlockHash().ToString(), pindexNew->nHeight, FormatMoney(pindexNew->nMoneySupply), FormatMoney(pindexNew->nMoneyTransacted),
       log(pindexNew->nChainWork.getdouble())/log(2.0), FormatISO8601DateTime(pindexNew->GetBlockTime()));
     CBlockIndex *tip = ::ChainActive().Tip();
     assert (tip);
@@ -2063,6 +2063,8 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
 
     std::vector<int> prevheights;
     CAmount nFees = 0;
+    int64_t nValueIn = 0;
+    int64_t nValueOut = 0;
     int nInputs = 0;
     int64_t nSigOpsCost = 0;
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
@@ -2074,7 +2076,11 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
 
         nInputs += tx.vin.size();
 
-        if (!tx.IsCoinBase())
+        if (tx.IsCoinBase())
+        {
+            nValueOut += tx.GetValueOut();
+        }
+        else
         {
             CAmount txfee = 0;
             TxValidationState tx_state;
@@ -2084,6 +2090,8 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
                             tx_state.GetRejectReason(), tx_state.GetDebugMessage());
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), state.ToString());
             }
+            nValueIn += view.GetValueIn(tx);
+            nValueOut += tx.GetValueOut();
             nFees += txfee;
             if (!MoneyRange(nFees)) {
                 LogPrintf("ERROR: %s: accumulated fee in the block out of range.\n", __func__);
@@ -2139,7 +2147,7 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
     LogPrint(BCLog::BENCH, "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs (%.2fms/blk)]\n", (unsigned)block.vtx.size(), MILLI * (nTime3 - nTime2), MILLI * (nTime3 - nTime2) / block.vtx.size(), nInputs <= 1 ? 0 : MILLI * (nTime3 - nTime2) / (nInputs-1), nTimeConnect * MICRO, nTimeConnect * MILLI / nBlocksTotal);
 
-    CAmount blockSubsidy = GetBlockSubsidy(block.nBits, chainparams.GetConsensus());
+    CAmount blockSubsidy = GetBlockSubsidy(block.nBits, block.nTime, chainparams.GetConsensus());
     CAmount blockReward = nFees + AdjustReward(pindex->pprev, blockSubsidy, chainparams.GetConsensus());
     if (block.vtx[0]->GetValueOut() > blockReward) {
         LogPrintf("ERROR: ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), blockReward);
@@ -2155,6 +2163,9 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
 
     if (fJustCheck)
         return true;
+
+    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
+    pindex->nMoneyTransacted = nValueIn;
 
     if (!WriteUndoDataForBlock(blockundo, state, pindex, chainparams))
         return false;
@@ -2415,8 +2426,9 @@ void static UpdateTip(const CBlockIndex* pindexNew, const CChainParams& chainPar
         if (nUpgraded > 0)
             AppendWarning(warningMessages, strprintf(_("%d of last 100 blocks have unexpected version").translated, nUpgraded));
     }
-    LogPrintf("%s: new best=%s height=%d version=0x%08x log2_work=%.8g tx=%lu date='%s' progress=%f cache=%.1fMiB(%utxo)%s\n", __func__,
-      pindexNew->GetBlockHash().ToString(), pindexNew->nHeight, pindexNew->nVersion,
+
+    LogPrintf("%s: new best=%s height=%d version=0x%08x moneysupply=%s moneytransacted=%s log2_work=%.8g tx=%lu date='%s' progress=%f cache=%.1fMiB(%utxo)%s\n", __func__,
+      pindexNew->GetBlockHash().ToString(), pindexNew->nHeight, pindexNew->nVersion, FormatMoney(pindexNew->nMoneySupply), FormatMoney(pindexNew->nMoneyTransacted),
       log(pindexNew->nChainWork.getdouble())/log(2.0), (unsigned long)pindexNew->nChainTx,
       FormatISO8601DateTime(pindexNew->GetBlockTime()),
       GuessVerificationProgress(chainParams.TxData(), pindexNew), ::ChainstateActive().CoinsTip().DynamicMemoryUsage() * (1.0 / (1<<20)), ::ChainstateActive().CoinsTip().GetCacheSize(),

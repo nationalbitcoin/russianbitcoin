@@ -77,7 +77,8 @@ public:
         consensus.SegwitHeight = 0;
         consensus.MinBIP9WarningHeight = 0;
         consensus.nPremineSubsidy = 18347513 * COIN; // Initial emission
-        consensus.nSubsidyLimit = 25 * COIN;
+        consensus.nBaseSubsidy = 1.5625 * COIN; // Base subsidy
+        consensus.nSubsidyLimit = 25 * COIN; // Maximum possible subsidy
         consensus.nSubsidyAdjustmentHistory = 6;
         consensus.powLimit = arith_uint256S("00000000000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa"); // Initial difficulty is 1000000.0
         consensus.nPowTargetTimespan = 3.5 * 24 * 60 * 60; // 3.5 days
@@ -145,7 +146,8 @@ public:
         consensus.SegwitHeight = 0;
         consensus.MinBIP9WarningHeight = 0; // segwit activation height + miner confirmation window
         consensus.nPremineSubsidy = 18347513 * COIN; // Initial emission
-        consensus.nSubsidyLimit = 25 * COIN;
+        consensus.nBaseSubsidy = 1.5625 * COIN; // Base subsidy
+        consensus.nSubsidyLimit = 25 * COIN; // Maximum possible subsidy
         consensus.nSubsidyAdjustmentHistory = 6;
         consensus.powLimit = arith_uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 3.5 * 24 * 60 * 60; // 3.5 days
@@ -222,7 +224,8 @@ public:
         consensus.SegwitHeight = 0; // SEGWIT is always activated on regtest unless overridden
         consensus.MinBIP9WarningHeight = 0;
         consensus.nPremineSubsidy = 18347513 * COIN; // Initial emission
-        consensus.nSubsidyLimit = 25 * COIN;
+        consensus.nBaseSubsidy = 1.5625 * COIN; // Base subsidy
+        consensus.nSubsidyLimit = 25 * COIN; // Maximum possible subsidy
         consensus.nSubsidyAdjustmentHistory = 6;
         consensus.powLimit = arith_uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 3.5 * 24 * 60 * 60; // 3.5 days

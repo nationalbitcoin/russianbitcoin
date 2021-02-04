@@ -162,6 +162,8 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* tip, const CBlockIn
     result.pushKV("difficulty", GetDifficulty(blockindex));
     result.pushKV("chainwork", blockindex->nChainWork.GetHex());
     result.pushKV("nTx", (uint64_t)blockindex->nTx);
+    result.pushKV("nMoneySupply", (uint64_t)blockindex->nMoneySupply);
+    result.pushKV("nMoneyTransacted", (uint64_t)blockindex->nMoneyTransacted);
 
     if (blockindex->pprev)
         result.pushKV("previousblockhash", blockindex->pprev->GetBlockHash().GetHex());
@@ -1892,7 +1894,7 @@ static UniValue getblockstats(const JSONRPCRequest& request)
     ret_all.pushKV("mintxsize", mintxsize == MAX_BLOCK_SERIALIZED_SIZE ? 0 : mintxsize);
     ret_all.pushKV("outs", outputs);
     
-    CAmount blockSubsidy = GetBlockSubsidy(pindex->nBits, Params().GetConsensus());
+    CAmount blockSubsidy = GetBlockSubsidy(pindex->nBits, pindex->nTime, Params().GetConsensus());
     ret_all.pushKV("subsidy", AdjustReward(pindex, blockSubsidy, Params().GetConsensus()));
     ret_all.pushKV("swtotal_size", swtotal_size);
     ret_all.pushKV("swtotal_weight", swtotal_weight);
