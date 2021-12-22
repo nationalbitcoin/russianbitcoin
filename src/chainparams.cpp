@@ -69,7 +69,7 @@ public:
         m_assumed_chain_state_size = 0;
 
         strNetworkID = CBaseChainParams::MAIN;
-        consensus.nSubsidyHalvingInterval = 210000;
+        consensus.nSubsidyHalvingInterval = 840000;
         consensus.BIP16Exception = uint256();
         consensus.BIP65Height = 0;
         consensus.BIP66Height = 0;
@@ -81,6 +81,7 @@ public:
         consensus.nSubsidyLimit = 25 * COIN; // Maximum possible subsidy
         consensus.nSubsidyAdjustmentHistory = 6;
         consensus.powLimit = arith_uint256S("00000000000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa"); // Initial difficulty is 1000000.0
+        consensus.checkpointPubKey = "030b30cc2540da8fdd64ff5b7eb0b771fda59f62c4cd79dbfabd8202ce40dd135c";
         consensus.nPowTargetTimespan = 3.5 * 24 * 60 * 60; // 3.5 days
         consensus.nPowTargetSpacing = 2.5 * 60; // 2.5 minutes
         consensus.fPowNoRetargeting = false;
@@ -138,7 +139,7 @@ class CTestNetParams : public CChainParams {
 public:
     CTestNetParams() {
         strNetworkID = CBaseChainParams::TESTNET;
-        consensus.nSubsidyHalvingInterval = 210000;
+        consensus.nSubsidyHalvingInterval = 840000;
         consensus.BIP16Exception = uint256();
         consensus.BIP65Height = 0;
         consensus.BIP66Height = 0;
@@ -150,6 +151,7 @@ public:
         consensus.nSubsidyLimit = 25 * COIN; // Maximum possible subsidy
         consensus.nSubsidyAdjustmentHistory = 6;
         consensus.powLimit = arith_uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.checkpointPubKey = "035807ae36a92437233878b3926c0fd714595148797812e008986de83fe76a0e9f";
         consensus.nPowTargetTimespan = 3.5 * 24 * 60 * 60; // 3.5 days
         consensus.nPowTargetSpacing = 2.5 * 60; // 2.5 minutes
         consensus.fPowNoRetargeting = false;
@@ -216,7 +218,7 @@ class CRegTestParams : public CChainParams {
 public:
     explicit CRegTestParams(const ArgsManager& args) {
         strNetworkID =  CBaseChainParams::REGTEST;
-        consensus.nSubsidyHalvingInterval = 210000;
+        consensus.nSubsidyHalvingInterval = 840000;
         consensus.BIP16Exception = uint256();
         consensus.BIP65Height = 0; // BIP65 activated on regtest (Used in functional tests)
         consensus.BIP66Height = 0; // BIP66 activated on regtest (Used in functional tests)
@@ -228,6 +230,7 @@ public:
         consensus.nSubsidyLimit = 25 * COIN; // Maximum possible subsidy
         consensus.nSubsidyAdjustmentHistory = 6;
         consensus.powLimit = arith_uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.checkpointPubKey = "035807ae36a92437233878b3926c0fd714595148797812e008986de83fe76a0e9f";
         consensus.nPowTargetTimespan = 3.5 * 24 * 60 * 60; // 3.5 days
         consensus.nPowTargetSpacing = 2.5 * 60; // 2.5 minutes
         consensus.fPowNoRetargeting = true;

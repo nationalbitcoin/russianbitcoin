@@ -9,6 +9,7 @@
 #include <blockfilter.h>
 #include <chain.h>
 #include <chainparams.h>
+#include <checkpointsync.h>
 #include <coins.h>
 #include <consensus/validation.h>
 #include <core_io.h>
@@ -1894,7 +1895,7 @@ static UniValue getblockstats(const JSONRPCRequest& request)
     ret_all.pushKV("mintxsize", mintxsize == MAX_BLOCK_SERIALIZED_SIZE ? 0 : mintxsize);
     ret_all.pushKV("outs", outputs);
     
-    CAmount blockSubsidy = GetBlockSubsidy(pindex->nBits, pindex->nTime, Params().GetConsensus());
+    CAmount blockSubsidy = GetBlockSubsidy(pindex->nHeight, pindex->nBits, pindex->nTime, Params().GetConsensus());
     ret_all.pushKV("subsidy", AdjustReward(pindex, blockSubsidy, Params().GetConsensus()));
     ret_all.pushKV("swtotal_size", swtotal_size);
     ret_all.pushKV("swtotal_weight", swtotal_weight);
@@ -2342,6 +2343,96 @@ UniValue dumptxoutset(const JSONRPCRequest& request)
     return result;
 }
 
+// RPC commands related to sync checkpoints
+// get information of sync-checkpoint (first introduced in ppcoin)
+
+static UniValue getcheckpoint(const JSONRPCRequest& request)
+{
+    RPCResult res_slave{
+        RPCResult::Type::OBJ, "", "", {
+            {RPCResult::Type::NUM, "height", "block height"},
+            {RPCResult::Type::NUM, "timestamp", "block time"},
+        }
+    };
+
+    RPCResult res_master{
+        RPCResult::Type::OBJ, "", "", {
+            {RPCResult::Type::NUM, "height", "block height"},
+            {RPCResult::Type::NUM, "timestamp", "block time"},
+            {RPCResult::Type::BOOL, "checkpointmaster", "is this master or not"},
+        }
+    };
+
+    RPCHelpMan{"getcheckpoint",
+                "\nShow info of synchronized checkpoint.\n",
+                {},
+                gArgs.IsArgSet("-checkpointkey") ? res_master : res_slave,
+                RPCExamples{
+                    HelpExampleCli("getcheckpoint", "")
+                },
+            }.Check(request);
+
+    UniValue result(UniValue::VOBJ);
+    CBlockIndex* pindexCheckpoint = LookupBlockIndex(hashSyncCheckpoint);
+
+    result.pushKV("synccheckpoint", hashSyncCheckpoint.ToString());
+    if (nullptr != pindexCheckpoint)
+    {
+        result.pushKV("height", pindexCheckpoint->nHeight);
+        result.pushKV("timestamp", (boost::int64_t) pindexCheckpoint->GetBlockTime());
+    }
+    if (gArgs.IsArgSet("-checkpointkey"))
+        result.pushKV("checkpointmaster", true);
+
+    return result;
+}
+
+static UniValue sendcheckpoint(const JSONRPCRequest& request)
+{
+    RPCResult res{
+        RPCResult::Type::OBJ, "", "", {
+            {RPCResult::Type::STR, "synccheckpoint", "checkpoint block hash"},
+            {RPCResult::Type::NUM, "height", "block height"},
+            {RPCResult::Type::NUM, "timestamp", "block time"},
+            {RPCResult::Type::BOOL, "checkpointmaster", "is this master or not"},
+        }
+    };
+
+    RPCHelpMan{"sendcheckpoint",
+                "\nSend a synchronized checkpoint.\n",
+                {
+                    {"blockhash", RPCArg::Type::STR_HEX, /* default */ "", "Block hash"},
+                },
+                res,
+                RPCExamples{
+                    HelpExampleCli("sendcheckpoint", "6e52b2e5906992aac83261998a6663e9637f48d6c655eb0ce980edc228bf922b")
+                },
+            }.Check(request);
+
+    if (!gArgs.IsArgSet("-checkpointkey") || CSyncCheckpoint::strMasterPrivKey.empty())
+        throw std::runtime_error("Not a checkpointmaster node, first set checkpointkey in configuration and restart client. ");
+
+    std::string strHash = request.params[0].get_str();
+    uint256 hash(uint256S(strHash));
+
+    if (!SendSyncCheckpoint(hash))
+        throw std::runtime_error("Failed to send checkpoint, check log. ");
+
+    UniValue result(UniValue::VOBJ);
+    CBlockIndex* pindexCheckpoint = LookupBlockIndex(hashSyncCheckpoint);
+
+    result.pushKV("synccheckpoint", hashSyncCheckpoint.ToString().c_str());
+    if (nullptr != pindexCheckpoint)
+    {
+        result.pushKV("height", pindexCheckpoint->nHeight);
+        result.pushKV("timestamp", (boost::int64_t) pindexCheckpoint->GetBlockTime());
+    }
+    result.pushKV("checkpointmaster", true);
+
+    return result;
+}
+
+
 void RegisterBlockchainRPCCommands(CRPCTable &t)
 {
 // clang-format off
@@ -2356,6 +2447,9 @@ static const CRPCCommand commands[] =
     { "blockchain",         "getblock",               &getblock,               {"blockhash","verbosity|verbose"} },
     { "blockchain",         "getblockhash",           &getblockhash,           {"height"} },
     { "blockchain",         "getblockheader",         &getblockheader,         {"blockhash","verbose"} },
+    { "blockchain",         "getcheckpoint",          &getcheckpoint,          {} },
+    { "blockchain",         "sendcheckpoint",         &sendcheckpoint,         {"blockhash"} },
+
     { "blockchain",         "getchaintips",           &getchaintips,           {} },
     { "blockchain",         "getdifficulty",          &getdifficulty,          {} },
     { "blockchain",         "getmempoolancestors",    &getmempoolancestors,    {"txid","verbose"} },

@@ -181,6 +181,7 @@ static const unsigned int MIN_BLOCKS_TO_KEEP = 288;
 static const unsigned int NODE_NETWORK_LIMITED_MIN_BLOCKS = 288;
 
 static const signed int DEFAULT_CHECKBLOCKS = 6;
+static const int DEFAULT_AUTOCHECKPOINT = 5;
 static const unsigned int DEFAULT_CHECKLEVEL = 3;
 
 // Require that user allocate at least 550 MiB for block & undo files (blk???.dat and rev???.dat)
@@ -252,7 +253,7 @@ bool GetTransaction(const uint256& hash, CTransactionRef& tx, const Consensus::P
  * validationinterface callback.
  */
 bool ActivateBestChain(BlockValidationState& state, const CChainParams& chainparams, std::shared_ptr<const CBlock> pblock = std::shared_ptr<const CBlock>());
-CAmount GetBlockSubsidy(unsigned int nBits, unsigned int nTime, const Consensus::Params& consensusParams);
+CAmount GetBlockSubsidy(int nHeight, unsigned int nBits, unsigned int nTime, const Consensus::Params& consensusParams);
 CAmount AdjustReward(const CBlockIndex* pindex, CAmount blockReward, const Consensus::Params& consensusParams);
 
 /** Guess verification progress (as a fraction between 0.0=genesis and 1.0=current tip). */

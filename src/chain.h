@@ -190,7 +190,7 @@ public:
     //! Amount of generated satoshis in this chain
     int64_t nMoneySupply{0};
 
-    //! Amount of transacted satoshis in this chain
+    //! Amount of transacted satoshis in this block
     int64_t nMoneyTransacted{0};
 
     CBlockIndex()
@@ -280,7 +280,7 @@ public:
     std::string ToString() const
     {
         return strprintf("CBlockIndex(pprev=%p, nHeight=%d, nMoneySupply=%s, nMoneyTransacted=%s, merkle=%s, hashBlock=%s)",
-            pprev, nHeight, FormatMoney(nMoneySupply), FormatMoney(nMoneyTransacted),
+            pprev, nHeight, FormatMoney(nMoneySupply),FormatMoney(nMoneyTransacted),
             hashMerkleRoot.ToString(),
             GetBlockHash().ToString());
     }

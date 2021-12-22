@@ -79,6 +79,7 @@ struct Params {
     CAmount nSubsidyLimit;
     int nSubsidyAdjustmentHistory;
     arith_uint256 powLimit;
+    std::string checkpointPubKey;
     bool fPowNoRetargeting;
     int64_t nPowTargetSpacing;
     int64_t nPowTargetTimespan;

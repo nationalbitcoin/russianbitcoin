@@ -15,6 +15,7 @@
 #include <blockfilter.h>
 #include <chain.h>
 #include <chainparams.h>
+#include <checkpointsync.h>
 #include <compat/sanity.h>
 #include <consensus/validation.h>
 #include <fs.h>
@@ -1570,6 +1571,14 @@ bool AppInitMain(NodeContext& node)
                     break;
                 }
 
+                // initialize synchronized checkpoint
+                if (!fReindex && !WriteSyncCheckpoint(chainparams.GenesisBlock().GetHash()))
+                    return error("LoadBlockIndex() : failed to init sync checkpoint");
+
+                // if checkpoint master key changed must reset sync-checkpoint
+                if (!CheckCheckpointPubKey())
+                    return error("failed to reset checkpoint master pubkey");
+
                 // At this point we're either in reindex or we've loaded a useful
                 // block tree into BlockIndex()!
 
@@ -1773,6 +1782,9 @@ bool AppInitMain(NodeContext& node)
         // The option to not set NODE_WITNESS is only used in the tests and should be removed.
         nLocalServices = ServiceFlags(nLocalServices | NODE_WITNESS);
     }
+
+    // Include NODE_ACP in services. Currently no flag to toggle this behaviour.
+    nLocalServices = ServiceFlags(nLocalServices | NODE_ACP);
 
     // ********************************************************* Step 11: import blocks
 
