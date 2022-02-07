@@ -121,6 +121,7 @@ enum class OptionsCategory {
     GUI,
     COMMANDS,
     REGISTER_COMMANDS,
+    CHECKPOINTING,
 
     HIDDEN // Always the last option to avoid printing these in the help
 };

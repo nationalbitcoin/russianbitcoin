@@ -482,6 +482,9 @@ std::string ArgsManager::GetHelpMessage() const
             case OptionsCategory::REGISTER_COMMANDS:
                 usage += HelpMessageGroup("Register Commands:");
                 break;
+            case OptionsCategory::CHECKPOINTING:
+                usage += HelpMessageGroup("Automatic Checkpointing:");
+                break;
             default:
                 break;
         }
