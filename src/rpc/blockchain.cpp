@@ -2373,6 +2373,8 @@ static UniValue getcheckpoint(const JSONRPCRequest& request)
             }.Check(request);
 
     UniValue result(UniValue::VOBJ);
+
+    LOCK(cs_main);
     CBlockIndex* pindexCheckpoint = LookupBlockIndex(hashSyncCheckpoint);
 
     result.pushKV("synccheckpoint", hashSyncCheckpoint.ToString());
@@ -2417,6 +2419,8 @@ static UniValue sendcheckpoint(const JSONRPCRequest& request)
 
     if (!SendSyncCheckpoint(hash))
         throw std::runtime_error("Failed to send checkpoint, check log. ");
+
+    LOCK(cs_main);
 
     UniValue result(UniValue::VOBJ);
     CBlockIndex* pindexCheckpoint = LookupBlockIndex(hashSyncCheckpoint);
