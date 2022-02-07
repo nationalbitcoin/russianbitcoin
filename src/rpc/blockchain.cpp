@@ -1895,7 +1895,7 @@ static UniValue getblockstats(const JSONRPCRequest& request)
     ret_all.pushKV("mintxsize", mintxsize == MAX_BLOCK_SERIALIZED_SIZE ? 0 : mintxsize);
     ret_all.pushKV("outs", outputs);
     
-    CAmount blockSubsidy = GetBlockSubsidy(pindex->nBits, pindex->nTime, Params().GetConsensus());
+    CAmount blockSubsidy = GetBlockSubsidy(pindex->nHeight, pindex->nBits, pindex->nTime, Params().GetConsensus());
     ret_all.pushKV("subsidy", AdjustReward(pindex, blockSubsidy, Params().GetConsensus()));
     ret_all.pushKV("swtotal_size", swtotal_size);
     ret_all.pushKV("swtotal_weight", swtotal_weight);

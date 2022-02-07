@@ -1223,7 +1223,6 @@ CAmount AdjustReward(const CBlockIndex* pindex, CAmount blockReward, const Conse
         return blockReward;
     }
 
-
     const int nBlocks = consensusParams.nSubsidyAdjustmentHistory;
 
     // First block contains premine
@@ -1245,11 +1244,20 @@ CAmount AdjustReward(const CBlockIndex* pindex, CAmount blockReward, const Conse
     return std::min(blockReward, consensusParams.nSubsidyLimit);
 }
 
-CAmount GetBlockSubsidy(unsigned int nBits, unsigned int nTime, const Consensus::Params& consensusParams)
+CAmount GetBlockSubsidy(int nHeight, unsigned int nBits, unsigned int nTime, const Consensus::Params& consensusParams)
 {
-    // Fixed reward since Dec 16, 2021
+    // Simple halving since Dec 16, 2021
     if (nTime > 1639625852) {
-        return consensusParams.nBaseSubsidy;
+
+        int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
+        // Force block reward to zero when right shift is undefined.
+        if (halvings >= 64)
+            return 0;
+
+        CAmount nSubsidy = consensusParams.nBaseSubsidy;
+        // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
+        nSubsidy >>= halvings;
+        return nSubsidy;
     }
 
     // Base value of block subsidy
@@ -2164,7 +2172,7 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
     LogPrint(BCLog::BENCH, "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs (%.2fms/blk)]\n", (unsigned)block.vtx.size(), MILLI * (nTime3 - nTime2), MILLI * (nTime3 - nTime2) / block.vtx.size(), nInputs <= 1 ? 0 : MILLI * (nTime3 - nTime2) / (nInputs-1), nTimeConnect * MICRO, nTimeConnect * MILLI / nBlocksTotal);
 
-    CAmount blockSubsidy = GetBlockSubsidy(block.nBits, block.nTime, chainparams.GetConsensus());
+    CAmount blockSubsidy = GetBlockSubsidy(pindex->nHeight, block.nBits, block.nTime, chainparams.GetConsensus());
     CAmount blockReward = nFees + AdjustReward(pindex->pprev, blockSubsidy, chainparams.GetConsensus());
     if (block.vtx[0]->GetValueOut() > blockReward) {
         LogPrintf("ERROR: ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), blockReward);
