@@ -151,10 +151,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     m_last_block_weight = nBlockWeight;
 
     // Block bits
-    unsigned int nBits = GetNextWorkRequired(pindexPrev, chainparams.GetConsensus());
+    unsigned int nBits = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
 
     // Block subsidy
-    CAmount blockSubsidy = GetBlockSubsidy(nHeight, nBits, pblock->nTime, chainparams.GetConsensus());
+    CAmount blockSubsidy = GetBlockSubsidy(nBits, pblock->nTime, chainparams.GetConsensus());
 
     // Create coinbase transaction.
     CMutableTransaction coinbaseTx;
