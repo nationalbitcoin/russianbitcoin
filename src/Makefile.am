@@ -603,7 +603,7 @@ bitcoin_bin_cxxflags = $(AM_CXXFLAGS) $(PIE_FLAGS)
 bitcoin_bin_ldflags = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(PTHREAD_FLAGS)
 
 if TARGET_WINDOWS
-bitcoin_daemon_sources += bitcoind-res.rc
+bitcoin_daemon_sources += russianbitcoind-res.rc
 endif
 
 bitcoin_bin_ldadd = \
@@ -641,7 +641,7 @@ russianbitcoin_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 russianbitcoin_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(PTHREAD_FLAGS)
 
 if TARGET_WINDOWS
-russianbitcoin_cli_SOURCES += bitcoin-cli-res.rc
+russianbitcoin_cli_SOURCES += russianbitcoin-cli-res.rc
 endif
 
 russianbitcoin_cli_LDADD = \
@@ -660,7 +660,7 @@ russianbitcoin_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 russianbitcoin_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(PTHREAD_FLAGS)
 
 if TARGET_WINDOWS
-russianbitcoin_tx_SOURCES += bitcoin-tx-res.rc
+russianbitcoin_tx_SOURCES += russianbitcoin-tx-res.rc
 endif
 
 russianbitcoin_tx_LDADD = \
@@ -681,7 +681,7 @@ russianbitcoin_wallet_LDFLAGS = $(bitcoin_bin_ldflags)
 russianbitcoin_wallet_LDADD = $(LIBBITCOIN_SERVER) $(LIBBITCOIN_WALLET_TOOL) $(bitcoin_bin_ldadd)
 
 if TARGET_WINDOWS
-russianbitcoin_wallet_SOURCES += bitcoin-wallet-res.rc
+russianbitcoin_wallet_SOURCES += russianbitcoin-wallet-res.rc
 endif
 #
 
