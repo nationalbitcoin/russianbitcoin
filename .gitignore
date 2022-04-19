@@ -5,12 +5,10 @@
 src/russianbitcoin
 src/russianbitcoind
 src/russianbitcoin-cli
+src/russianbitcoin-gui
+src/russianbitcoin-node
 src/russianbitcoin-tx
 src/russianbitcoin-wallet
-src/test/fuzz
-!src/test/fuzz/*.*
-src/test/test_bitcoin
-src/qt/test/test_bitcoin-qt
 
 # autoreconf
 Makefile.in
@@ -46,8 +44,6 @@ src/univalue/gen
 src/qt/*.moc
 src/qt/moc_*.cpp
 src/qt/forms/ui_*.h
-
-src/qt/test/moc*.cpp
 
 src/qt/bitcoin-qt.config
 src/qt/bitcoin-qt.creator
@@ -117,7 +113,10 @@ releases
 /*.info
 test_bitcoin.coverage/
 total.coverage/
+fuzz.coverage/
 coverage_percent.txt
+/cov_tool_wrapper.sh
+qa-assets/
 
 #build tests
 linux-coverage-build
@@ -125,6 +124,7 @@ linux-build
 win32-build
 test/config.ini
 test/cache/*
+test/.mypy_cache/
 
 !src/leveldb*/Makefile
 
@@ -137,7 +137,7 @@ contrib/devtools/split-debug.sh
 db4/
 
 # clang-check
-*.plist
+#*.plist
 
 osx_volname
 dist/

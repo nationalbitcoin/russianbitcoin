@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2019 The Bitcoin Core developers
+// Copyright (c) 2009-2020 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -12,7 +12,6 @@
 #include <primitives/block.h>
 #include <tinyformat.h>
 #include <uint256.h>
-#include <util/moneystr.h>
 
 #include <vector>
 
@@ -144,6 +143,9 @@ public:
     //! pointer to the index of the predecessor of this block
     CBlockIndex* pprev{nullptr};
 
+    //! pointer to the index of the successor of this block
+    CBlockIndex* pnext;
+
     //! pointer to the index of some further predecessor of this block
     CBlockIndex* pskip{nullptr};
 
@@ -159,8 +161,8 @@ public:
     //! Byte offset within rev?????.dat where this block's undo data is stored
     unsigned int nUndoPos{0};
 
-    //! (memory only) Total amount of work (expected number of hashes) in the chain up to and including this block
-    arith_uint256 nChainWork{};
+    //! (memory only) Total amount of trust (expected number of hashes) in the chain up to and including this block
+    arith_uint256 nChainTrust{};
 
     //! Number of transactions in this block.
     //! Note: in a potential headers-first mode, this number cannot be relied upon
@@ -181,17 +183,48 @@ public:
     uint32_t nBits{0};
     uint32_t nNonce{0};
 
+    // Proof of stake
+    COutPoint prevoutStake;
+    // block signature - proof-of-stake protect the block by signing the block using a stake holder private key
+    std::vector<unsigned char> vchBlockSig;
+    uint256 nStakeModifier;
+    uint256 hashProof;
+    uint64_t nMoneySupply;
+
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     int32_t nSequenceId{0};
 
     //! (memory only) Maximum nTime in the chain up to and including this block.
     unsigned int nTimeMax{0};
 
-    //! Amount of generated satoshis in this chain
-    int64_t nMoneySupply{0};
+    void SetNull()
+    {
+        phashBlock = nullptr;
+        pprev = nullptr;
+        pnext = nullptr;
+        pskip = nullptr;
+        nHeight = 0;
+        nFile = 0;
+        nDataPos = 0;
+        nUndoPos = 0;
+        nChainTrust = arith_uint256();
+        nTx = 0;
+        nChainTx = 0;
+        nStatus = 0;
+        nSequenceId = 0;
+        nTimeMax = 0;
 
-    //! Amount of transacted satoshis in this block
-    int64_t nMoneyTransacted{0};
+        nVersion       = 0;
+        hashMerkleRoot = uint256();
+        nTime          = 0;
+        nBits          = 0;
+        nNonce         = 0;
+        prevoutStake.SetNull();
+        vchBlockSig.clear();
+        nStakeModifier = uint256();
+        hashProof = uint256();
+        nMoneySupply = 0;
+    }
 
     CBlockIndex()
     {
@@ -204,6 +237,18 @@ public:
           nBits{block.nBits},
           nNonce{block.nNonce}
     {
+        SetNull();
+
+        nVersion       = block.nVersion;
+        hashMerkleRoot = block.hashMerkleRoot;
+        nTime          = block.nTime;
+        nBits          = block.nBits;
+        nNonce         = block.nNonce;
+        prevoutStake   = block.prevoutStake;
+        vchBlockSig    = block.vchBlockSig;
+        nStakeModifier = uint256();
+        hashProof = uint256(); 
+        nMoneySupply   = 0;
     }
 
     FlatFilePos GetBlockPos() const {
@@ -234,6 +279,8 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
+        block.vchBlockSig    = vchBlockSig;
+        block.prevoutStake   = prevoutStake;
         return block;
     }
 
@@ -277,10 +324,20 @@ public:
         return pbegin[(pend - pbegin)/2];
     }
 
+    bool IsProofOfAuthority() const
+    {
+        return !IsProofOfStake();
+    }
+
+    bool IsProofOfStake() const
+    {
+        return !prevoutStake.IsNull();
+    }
+
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(pprev=%p, nHeight=%d, nMoneySupply=%s, nMoneyTransacted=%s, merkle=%s, hashBlock=%s)",
-            pprev, nHeight, FormatMoney(nMoneySupply),FormatMoney(nMoneyTransacted),
+        return strprintf("CBlockIndex(pprev=%p, nHeight=%d, merkle=%s, hashBlock=%s)",
+            pprev, nHeight,
             hashMerkleRoot.ToString(),
             GetBlockHash().ToString());
     }
@@ -349,12 +406,6 @@ public:
         if (obj.nStatus & BLOCK_HAVE_DATA) READWRITE(VARINT(obj.nDataPos));
         if (obj.nStatus & BLOCK_HAVE_UNDO) READWRITE(VARINT(obj.nUndoPos));
 
-        // Generated satoshis
-        READWRITE(obj.nMoneySupply);
-
-        // Transacted satoshis
-        READWRITE(obj.nMoneyTransacted);
-
         // block header
         READWRITE(obj.nVersion);
         READWRITE(obj.hashPrev);
@@ -362,6 +413,11 @@ public:
         READWRITE(obj.nTime);
         READWRITE(obj.nBits);
         READWRITE(obj.nNonce);
+        READWRITE(obj.prevoutStake);
+        READWRITE(obj.vchBlockSig);
+        READWRITE(obj.nStakeModifier);
+        READWRITE(obj.hashProof);
+        READWRITE(VARINT(obj.nMoneySupply));
     }
 
     uint256 GetBlockHash() const
@@ -373,6 +429,8 @@ public:
         block.nTime           = nTime;
         block.nBits           = nBits;
         block.nNonce          = nNonce;
+        block.prevoutStake    = prevoutStake;
+        block.vchBlockSig     = vchBlockSig;
         return block.GetHash();
     }
 
@@ -409,12 +467,6 @@ public:
         if (nHeight < 0 || nHeight >= (int)vChain.size())
             return nullptr;
         return vChain[nHeight];
-    }
-
-    /** Compare two chains efficiently. */
-    friend bool operator==(const CChain &a, const CChain &b) {
-        return a.vChain.size() == b.vChain.size() &&
-               a.vChain[a.vChain.size() - 1] == b.vChain[b.vChain.size() - 1];
     }
 
     /** Efficiently check whether a block is present in this chain. */

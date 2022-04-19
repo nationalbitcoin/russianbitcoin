@@ -32,7 +32,7 @@ MessageVerificationResult MessageVerify(
         return MessageVerificationResult::ERR_INVALID_ADDRESS;
     }
 
-    if (boost::get<WitnessV0KeyHash>(&destination) == nullptr) {
+    if (boost::get<WitnessV0KeyHash>(&destination) == nullptr && boost::get<PKHash>(&destination) == nullptr) {
         return MessageVerificationResult::ERR_ADDRESS_NO_KEY;
     }
 
@@ -47,7 +47,7 @@ MessageVerificationResult MessageVerify(
         return MessageVerificationResult::ERR_PUBKEY_NOT_RECOVERED;
     }
 
-    if (!(CTxDestination(WitnessV0KeyHash(pubkey.GetID())) == destination)) {
+    if (CTxDestination(WitnessV0KeyHash(pubkey.GetID())) != destination && CTxDestination(PKHash(pubkey.GetID())) != destination) {
         return MessageVerificationResult::ERR_NOT_SIGNED;
     }
 
@@ -65,7 +65,7 @@ bool MessageSign(
         return false;
     }
 
-    signature = EncodeBase64(signature_bytes.data(), signature_bytes.size());
+    signature = EncodeBase64(signature_bytes);
 
     return true;
 }

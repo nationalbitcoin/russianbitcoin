@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2019 The Bitcoin Core developers
+// Copyright (c) 2009-2020 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -43,7 +43,7 @@
  * - RandAddPeriodic() seeds everything that fast seeding includes, but additionally:
  *   - A high-precision timestamp
  *   - Dynamic environment data (performance monitoring, ...)
- *   - Strengthen the entropy for 10 ms using repeated SHA3-512.
+ *   - Strengthen the entropy for 10 ms using repeated SHA512.
  *   This is run once every minute.
  *
  * On first use of the RNG (regardless of what function is called first), all entropy
@@ -51,9 +51,9 @@
  * - 256 bits from the hardware RNG (rdseed or rdrand) when available.
  * - Dynamic environment data (performance monitoring, ...)
  * - Static environment data
- * - Strengthen the entropy for 100 ms using repeated SHA3-512.
+ * - Strengthen the entropy for 100 ms using repeated SHA512.
  *
- * When mixing in new entropy, H = SHA3-512(entropy || old_rng_state) is computed, and
+ * When mixing in new entropy, H = SHA512(entropy || old_rng_state) is computed, and
  * (up to) the first 32 bytes of H are produced as output, while the last 32 bytes
  * become the new RNG state.
 */
@@ -67,8 +67,21 @@
  * Thread-safe.
  */
 void GetRandBytes(unsigned char* buf, int num) noexcept;
+/** Generate a uniform random integer in the range [0..range). Precondition: range > 0 */
 uint64_t GetRand(uint64_t nMax) noexcept;
-std::chrono::microseconds GetRandMicros(std::chrono::microseconds duration_max) noexcept;
+/** Generate a uniform random duration in the range [0..max). Precondition: max.count() > 0 */
+template <typename D>
+D GetRandomDuration(typename std::common_type<D>::type max) noexcept
+// Having the compiler infer the template argument from the function argument
+// is dangerous, because the desired return value generally has a different
+// type than the function argument. So std::common_type is used to force the
+// call site to specify the type of the return value.
+{
+    assert(max.count() > 0);
+    return D{GetRand(max.count())};
+};
+constexpr auto GetRandMicros = GetRandomDuration<std::chrono::microseconds>;
+constexpr auto GetRandMillis = GetRandomDuration<std::chrono::milliseconds>;
 int GetRandInt(int nMax) noexcept;
 uint256 GetRandHash() noexcept;
 

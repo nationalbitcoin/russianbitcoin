@@ -7,9 +7,9 @@
 #define BITCOIN_CONSENSUS_PARAMS_H
 
 #include <uint256.h>
-#include <arith_uint256.h>
-#include <amount.h>
 #include <limits>
+#include <arith_uint256.h>
+#include <pubkey.h>
 
 namespace Consensus {
 
@@ -47,8 +47,6 @@ struct BIP9Deployment {
 struct Params {
     uint256 hashGenesisBlock;
     int nSubsidyHalvingInterval;
-    /* Block hash that is excepted from BIP16 enforcement */
-    uint256 BIP16Exception;
     /** Block height and hash at which BIP34 becomes active */
     int BIP34Height;
     uint256 BIP34Hash;
@@ -65,27 +63,38 @@ struct Params {
     /** Don't warn about unknown BIP 9 activations below this height.
      * This prevents us from warning about the CSV and segwit activations. */
     int MinBIP9WarningHeight;
+    /** Block height at which RUBTCColdStakeEnable becomes active - cold staking
+     * will be enabled, allowing wallets to use delegations for staking. */
+    int RUBTCColdStakeEnableHeight;
     /**
      * Minimum blocks including miner confirmation of the total of 2016 blocks in a retargeting period,
-     * (nPowTargetTimespan / nPowTargetSpacing) which is also used for BIP9 deployments.
+     * (nTargetTimespan / nTargetSpacing) which is also used for BIP9 deployments.
      * Examples: 1916 for 95%, 1512 for testchains.
      */
     uint32_t nRuleChangeActivationThreshold;
     uint32_t nMinerConfirmationWindow;
     BIP9Deployment vDeployments[MAX_VERSION_BITS_DEPLOYMENTS];
     /** Proof of work parameters */
-    CAmount nBaseSubsidy;
-    CAmount nPremineSubsidy;
-    CAmount nSubsidyLimit;
-    int nSubsidyAdjustmentHistory;
     arith_uint256 powLimit;
-    std::string checkpointPubKey;
+    bool fPowAllowMinDifficultyBlocks;
     bool fPowNoRetargeting;
-    int64_t nPowTargetSpacing;
-    int64_t nPowTargetTimespan;
-    int64_t DifficultyAdjustmentInterval() const { return nPowTargetTimespan / nPowTargetSpacing; }
-    uint256 nMinimumChainWork;
+    int64_t nTargetSpacing;
+    int64_t nTargetTimespan;
+    int64_t nMinipumPoASpacing;
+    CKeyID authorityID;
+    int nLastCoinbaseEmissionHeight;
+
+    /** The best chain should have at least this much work */
+    uint256 nMinimumChainTrust;
+    /** By default assume that the signatures in ancestors of this block are valid */
     uint256 defaultAssumeValid;
+    /** Proof of stake parameters */
+    uint256 posLimit;
+    bool fPoSNoRetargeting;
+    int nMPoSRewardRecipients;
+    int nEnableHeaderSignatureHeight;
+    /** Block sync-checkpoint span*/
+    int nCheckpointSpan;
 };
 } // namespace Consensus
 

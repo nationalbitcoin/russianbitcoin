@@ -6,13 +6,19 @@
 #include <key.h>
 
 #include <crypto/common.h>
+#include <crypto/hmac_sha512.h>
 #include <random.h>
+
+/*
+#include <openssl/rand.h>
+#include <openssl/obj_mac.h>
+#include <openssl/opensslv.h>
+*/
 
 void CKey::MakeNewKey() {
     CPrivKey seed(32);
     GetStrongRandBytes(seed.data(), seed.size());
     ed25519_create_privkey(keydata.data(), seed.data());
-    ed25519_get_pubkey(pubkey, keydata.data());
     fValid = true;
 }
 
@@ -26,16 +32,19 @@ CPrivKey CKey::GetPrivKey() const {
 
 CPubKey CKey::GetPubKey() const {
     assert(fValid);
+    uint8_t pubkey[SIZE];
+    ed25519_get_pubkey(pubkey, keydata.data());
     CPubKey result;
     result.Set32(pubkey);
     return result;
 }
 
-bool CKey::Sign(const uint512 &hash, std::vector<unsigned char>& vchSig, bool grind, uint32_t test_case) const {
+bool CKey::Sign(const uint512 &hash, std::vector<unsigned char>& vchSig, bool grind) const {
     if (!fValid)
         return false;
+    CPubKey pubkey = GetPubKey();
     vchSig.resize(CPubKey::SIGNATURE_SIZE);
-    ed25519_sign(vchSig.data(), hash.begin(), hash.size(), pubkey, keydata.data());
+    ed25519_sign(vchSig.data(), hash.begin(), hash.size(), pubkey.data() + 1, keydata.data());
     return true;
 }
 
@@ -57,26 +66,28 @@ bool CKey::SignCompact(const uint512 &hash, std::vector<unsigned char>& vchSig) 
         return false;
     // Enough to contain public key + signature
     vchSig.resize(CPubKey::JOINED_SIGNATURE_SIZE);
+
+    // Create public key
+    uint8_t* pubkey = vchSig.data();
+    ed25519_get_pubkey(pubkey, keydata.data());
+
     // Pointer to beginning of signature
     unsigned char *signature = vchSig.data() + 32;
-    // Copy public key
-    memcpy(vchSig.data(), pubkey, 32);
+
     // Make signature
     ed25519_sign(signature, hash.begin(), hash.size(), pubkey, keydata.data());
     // Verify and return
     return ed25519_verify(signature, hash.begin(), hash.size(), pubkey) != 0;
 }
 
-bool CKey::Load(const CPrivKey &privkey, const CPubKey &vchPubKey, bool fSkipCheck=false) {
+bool CKey::Load(const CPrivKey &seckey, const CPubKey &vchPubKey, bool fSkipCheck=false) {
     // Must be either 32 or 64 bytes long
-    if (privkey.size() != 32 && privkey.size() != 64)
+    if (seckey.size() != 32 && seckey.size() != 64)
         return false;
 
     // Copy private key
     //  We only really need the first 32 bytes
-    memcpy((unsigned char*)begin(), privkey.data(), 32);
-    // Cached public key
-    ed25519_get_pubkey(pubkey, keydata.data());
+    memcpy((unsigned char*)begin(), seckey.data(), 32);
 
     fValid = true;
     if (fSkipCheck)

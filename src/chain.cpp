@@ -121,6 +121,10 @@ void CBlockIndex::BuildSkip()
 
 arith_uint256 GetBlockProof(const CBlockIndex& block)
 {
+    // Proof-of-Authority blocks have minimal amount of proof which is fixed
+    if (block.IsProofOfAuthority())
+        return 1;
+
     arith_uint256 bnTarget;
     bool fNegative;
     bool fOverflow;
@@ -138,13 +142,13 @@ int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& fr
 {
     arith_uint256 r;
     int sign = 1;
-    if (to.nChainWork > from.nChainWork) {
-        r = to.nChainWork - from.nChainWork;
+    if (to.nChainTrust > from.nChainTrust) {
+        r = to.nChainTrust - from.nChainTrust;
     } else {
-        r = from.nChainWork - to.nChainWork;
+        r = from.nChainTrust - to.nChainTrust;
         sign = -1;
     }
-    r = r * arith_uint256(params.nPowTargetSpacing) / GetBlockProof(tip);
+    r = r * arith_uint256(params.nTargetSpacing) / GetBlockProof(tip);
     if (r.bits() > 63) {
         return sign * std::numeric_limits<int64_t>::max();
     }

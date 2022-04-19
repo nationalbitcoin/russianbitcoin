@@ -1,4 +1,4 @@
-// Copyright (c) 2019 The Bitcoin Core developers
+// Copyright (c) 2019-2020 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -8,6 +8,7 @@
 #include <qt/sendcoinsrecipient.h>
 #include <support/allocators/secure.h>
 #include <sync.h>
+#include <util/translation.h>
 
 #include <map>
 #include <memory>
@@ -61,6 +62,7 @@ public:
     std::map<std::string, bool> listWalletDir() const;
 
     void closeWallet(WalletModel* wallet_model, QWidget* parent = nullptr);
+    void closeAllWallets(QWidget* parent = nullptr);
 
 Q_SIGNALS:
     void walletAdded(WalletModel* wallet_model);
@@ -104,8 +106,8 @@ protected:
     QWidget* const m_parent_widget;
     QProgressDialog* m_progress_dialog{nullptr};
     WalletModel* m_wallet_model{nullptr};
-    std::string m_error_message;
-    std::vector<std::string> m_warning_message;
+    bilingual_str m_error_message;
+    std::vector<bilingual_str> m_warning_message;
 };
 
 

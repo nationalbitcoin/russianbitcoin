@@ -4,9 +4,6 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <pubkey.h>
-#include <ed25519.h>
-#include <iostream>
-#include <util/strencodings.h>
 #include <key.h>
 
 bool CPubKey::Verify(const uint512 &hash, const std::vector<unsigned char>& vchSig) const {

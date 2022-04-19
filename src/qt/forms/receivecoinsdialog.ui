@@ -47,7 +47,7 @@
         <item row="6" column="0">
          <widget class="QLabel" name="label_3">
           <property name="toolTip">
-           <string>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Russian Bitcoin network.</string>
+           <string>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Bitcoin network.</string>
           </property>
           <property name="text">
            <string>&amp;Message:</string>
@@ -114,6 +114,12 @@
              <iconset resource="../bitcoin.qrc">
               <normaloff>:/icons/receiving_addresses</normaloff>:/icons/receiving_addresses</iconset>
             </property>
+            <property name="autoDefault">
+             <bool>false</bool>
+            </property>
+            <property name="default">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
@@ -137,6 +143,18 @@
             <property name="autoDefault">
              <bool>false</bool>
             </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="addressTypeSelector">
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
+            </property>
+            <item>
+             <property name="text">
+              <string>(none)</string>
+             </property>
+            </item>
            </widget>
           </item>
           <item>
@@ -338,6 +356,7 @@
   <tabstop>reqMessage</tabstop>
   <tabstop>receiveButton</tabstop>
   <tabstop>clearButton</tabstop>
+  <tabstop>addressTypeSelector</tabstop>
   <tabstop>recentRequestsView</tabstop>
   <tabstop>showRequestButton</tabstop>
   <tabstop>removeRequestButton</tabstop>

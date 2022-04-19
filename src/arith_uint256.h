@@ -284,15 +284,4 @@ public:
 uint256 ArithToUint256(const arith_uint256 &);
 arith_uint256 UintToArith256(const uint256 &);
 
-/* arith_uint256 from const char *.
- * This is a separate function because the constructor arith_uint256(const char*) can result
- * in dangerously catching arith_uint256(0).
- */
-inline arith_uint256 arith_uint256S(const char *str)
-{
-    arith_uint256 rv;
-    rv.SetHex(str);
-    return rv;
-}
-
 #endif // BITCOIN_ARITH_UINT256_H

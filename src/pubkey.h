@@ -9,12 +9,12 @@
 
 #include <hash.h>
 #include <serialize.h>
+#include <span.h>
 #include <uint256.h>
 #include <ed25519.h>
 
 #include <stdexcept>
 #include <vector>
-#include <iostream>
 
 /** A reference to a CKey: the Hash160 of its serialized public key */
 class CKeyID : public uint160
@@ -105,6 +105,10 @@ public:
     const unsigned char* begin() const { return vch; }
     const unsigned char* end() const { return vch + size(); }
     const unsigned char& operator[](unsigned int pos) const { return vch[pos]; }
+    std::vector<unsigned char> getvch() const
+    {
+        return std::vector<unsigned char>(begin(), end());
+    }
 
     //! Comparator implementation.
     friend bool operator==(const CPubKey& a, const CPubKey& b)
@@ -118,7 +122,8 @@ public:
     }
     friend bool operator<(const CPubKey& a, const CPubKey& b)
     {
-        return memcmp(a.vch, b.vch, a.size()) < 0;
+        return a.vch[0] < b.vch[0] ||
+               (a.vch[0] == b.vch[0] && memcmp(a.vch, b.vch, a.size()) < 0);
     }
 
     //! Implement serialization, as if this was a byte vector.
@@ -135,6 +140,9 @@ public:
         unsigned int len = ::ReadCompactSize(s);
         if (len <= SIZE) {
             s.read((char*)vch, len);
+            if (len != size()) {
+                Invalidate();
+            }
         } else {
             // invalid pubkey, skip available data
             char dummy;
@@ -147,19 +155,19 @@ public:
     //! Get the KeyID of this public key (hash of its serialization)
     CKeyID GetID() const
     {
-        return CKeyID(Hash160(vch, vch + size()));
+        return CKeyID(Hash160(MakeSpan(vch).first(size())));
     }
 
     //! Get the 256-bit hash of this public key.
     uint256 GetHash() const
     {
-        return Hash(vch, vch + size());
+        return Hash(MakeSpan(vch).first(size()));
     }
 
     /*
      * Check syntactic correctness.
      *
-     * Note that this is consensus critical as CheckSig() calls it!
+     * Note that this is consensus critical as CheckECDSASignature() calls it!
      */
     bool IsValid() const
     {
@@ -167,8 +175,8 @@ public:
     }
 
     /**
-     * Verify a signature (64 bytes).
-     * If this public key is not valid, the return value will be false.
+     * Verify a DER signature (~72 bytes).
+     * If this public key is not fully valid, the return value will be false.
      */
     bool Verify(const uint512& hash, const std::vector<unsigned char>& vchSig) const;
 
@@ -182,18 +190,26 @@ class CExtPubKey {
 private:
     KEYCHAIN_PUBLIC_CTX ctx;
 public:
-    friend bool operator==(const CExtPubKey &a, const CExtPubKey &b)
+
+    bool operator==(const CExtPubKey &other) const
     {
-        return keychain_public_equals(&a.ctx, &b.ctx);
+        return keychain_public_equals(&ctx, &other.ctx);;
     }
+
+    bool operator!=(const CExtPubKey &other) const
+    {
+        return !keychain_public_equals(&ctx, &other.ctx);
+    }
+
     //! Replace derivation context
     void Set(KEYCHAIN_PUBLIC_CTX &ctx) {
         this->ctx = ctx;
     }
+
     void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
     void Decode(const unsigned char code[BIP32_EXTKEY_SIZE]);
-    //! Derive new extended key
     bool Derive(CExtPubKey& out, unsigned int nChild) const;
+
     //! Get current public key
     CPubKey GetPubKey() const;
     //! Build extended private key using our derivation metadata and provided key.

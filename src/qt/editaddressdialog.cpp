@@ -8,6 +8,8 @@
 #include <qt/addresstablemodel.h>
 #include <qt/guiutil.h>
 
+#include <addressbook.h>
+
 #include <QDataWidgetMapper>
 #include <QMessageBox>
 
@@ -20,7 +22,6 @@ EditAddressDialog::EditAddressDialog(Mode _mode, QWidget *parent) :
     model(nullptr)
 {
     ui->setupUi(this);
-
     GUIUtil::setupAddressWidget(ui->addressEdit, this);
 
     switch(mode)
@@ -43,6 +44,8 @@ EditAddressDialog::EditAddressDialog(Mode _mode, QWidget *parent) :
     GUIUtil::ItemDelegate* delegate = new GUIUtil::ItemDelegate(mapper);
     connect(delegate, &GUIUtil::ItemDelegate::keyEscapePressed, this, &EditAddressDialog::reject);
     mapper->setItemDelegate(delegate);
+
+    GUIUtil::handleCloseWindowShortcut(this);
 }
 
 EditAddressDialog::~EditAddressDialog()
@@ -108,7 +111,7 @@ void EditAddressDialog::accept()
             break;
         case AddressTableModel::INVALID_ADDRESS:
             QMessageBox::warning(this, windowTitle(),
-                tr("The entered address \"%1\" is not a valid Russian Bitcoin address.").arg(ui->addressEdit->text()),
+                tr("The entered address \"%1\" is not a valid Bitcoin address.").arg(ui->addressEdit->text()),
                 QMessageBox::Ok, QMessageBox::Ok);
             break;
         case AddressTableModel::DUPLICATE_ADDRESS:
@@ -139,7 +142,7 @@ QString EditAddressDialog::getDuplicateAddressWarning() const
     QString existing_label = model->labelForAddress(dup_address);
     QString existing_purpose = model->purposeForAddress(dup_address);
 
-    if (existing_purpose == "receive" &&
+    if (existing_purpose == QString::fromStdString(AddressBook::AddressBookPurpose::RECEIVE) &&
             (mode == NewSendingAddress || mode == EditSendingAddress)) {
         return tr(
             "Address \"%1\" already exists as a receiving address with label "

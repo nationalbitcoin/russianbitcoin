@@ -7,6 +7,7 @@
 #define BITCOIN_SCRIPT_INTERPRETER_H
 
 #include <script/script_error.h>
+#include <span.h>
 #include <primitives/transaction.h>
 
 #include <vector>
@@ -15,7 +16,10 @@
 class CPubKey;
 class CScript;
 class CTransaction;
+class CTxOut;
 class uint256;
+
+typedef std::vector<unsigned char> valtype;
 
 /** Signature hash types/flags */
 enum
@@ -24,6 +28,10 @@ enum
     SIGHASH_NONE = 2,
     SIGHASH_SINGLE = 3,
     SIGHASH_ANYONECANPAY = 0x80,
+
+    SIGHASH_DEFAULT = 0, //!< Taproot only; implied when sighash byte is missing, and equivalent to SIGHASH_ALL
+    SIGHASH_OUTPUT_MASK = 3,
+    SIGHASH_INPUT_MASK = 0x80,
 };
 
 /** Script verification flags.
@@ -39,8 +47,16 @@ enum
     SCRIPT_VERIFY_P2SH      = (1U << 0),
 
     // Passing a non-strict-DER signature or one with undefined hashtype to a checksig operation causes script failure.
-    // Evaluating a pubkey that is not (0x03 + 32 bytes) by checksig causes script failure.
+    // Evaluating a pubkey that is not (0x04 + 64 bytes) or (0x02 or 0x03 + 32 bytes) by checksig causes script failure.
+    // (not used or intended as a consensus rule).
     SCRIPT_VERIFY_STRICTENC = (1U << 1),
+
+    // Passing a non-strict-DER signature to a checksig operation causes script failure (BIP62 rule 1)
+    SCRIPT_VERIFY_DERSIG    = (1U << 2),
+
+    // Passing a non-strict-DER signature or one with S > order/2 to a checksig operation causes script failure
+    // (BIP62 rule 5).
+    SCRIPT_VERIFY_LOW_S     = (1U << 3),
 
     // verify dummy stack item consumed by CHECKMULTISIG is of zero-length (BIP62 rule 7).
     SCRIPT_VERIFY_NULLDUMMY = (1U << 4),
@@ -71,6 +87,8 @@ enum
     // "Exactly one stack element must remain, and when interpreted as a boolean, it must be true".
     // (BIP62 rule 6)
     // Note: CLEANSTACK should never be used without P2SH or WITNESS.
+    // Note: WITNESS_V0 and TAPSCRIPT script execution have behavior similar to CLEANSTACK as part of their
+    //       consensus rules. It is automatic there and does not need this flag.
     SCRIPT_VERIFY_CLEANSTACK = (1U << 8),
 
     // Verify CHECKLOCKTIMEVERIFY
@@ -93,23 +111,48 @@ enum
 
     // Segwit script only: Require the argument of OP_IF/NOTIF to be exactly 0x01 or empty vector
     //
+    // Note: TAPSCRIPT script execution has behavior similar to MINIMALIF as part of its consensus
+    //       rules. It is automatic there and does not depend on this flag.
     SCRIPT_VERIFY_MINIMALIF = (1U << 13),
 
     // Signature(s) must be empty vector if a CHECK(MULTI)SIG operation failed
     //
     SCRIPT_VERIFY_NULLFAIL = (1U << 14),
 
+    // Public keys in segregated witness scripts must be compressed
+    //
+    SCRIPT_VERIFY_WITNESS_PUBKEYTYPE = (1U << 15),
+
     // Making OP_CODESEPARATOR and FindAndDelete fail any non-segwit scripts
     //
     SCRIPT_VERIFY_CONST_SCRIPTCODE = (1U << 16),
 };
 
-bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, ScriptError* serror);
+bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
 
 struct PrecomputedTransactionData
 {
+    // BIP341 precomputed data.
+    // These are single-SHA256, see https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#cite_note-15.
+    uint512 m_prevouts_single_hash;
+    uint512 m_sequences_single_hash;
+    uint512 m_outputs_single_hash;
+    uint512 m_spent_amounts_single_hash;
+    uint512 m_spent_scripts_single_hash;
+
+    // BIP143 precomputed data (double-SHA3-512).
     uint512 hashPrevouts, hashSequence, hashOutputs;
-    bool ready = false;
+    //! Whether the 3 fields above are initialized.
+    bool m_bip143_segwit_ready = false;
+
+    std::vector<CTxOut> m_spent_outputs;
+    //! Whether m_spent_outputs is initialized.
+    bool m_spent_outputs_ready = false;
+
+    PrecomputedTransactionData() = default;
+
+    template <class T>
+    void Init(const T& tx, std::vector<CTxOut>&& spent_outputs);
 
     template <class T>
     explicit PrecomputedTransactionData(const T& tx);
@@ -117,8 +160,33 @@ struct PrecomputedTransactionData
 
 enum class SigVersion
 {
-    BASE = 0,
-    WITNESS_V0 = 1,
+    BASE = 0,        //!< Bare scripts and BIP16 P2SH-wrapped redeemscripts
+    WITNESS_V0 = 1,  //!< Witness v0 (P2WPKH and P2WSH); see BIP 141
+};
+
+struct ScriptExecutionData
+{
+    //! Whether m_tapleaf_hash is initialized.
+    bool m_tapleaf_hash_init = false;
+    //! The tapleaf hash.
+    uint512 m_tapleaf_hash;
+
+    //! Whether m_codeseparator_pos is initialized.
+    bool m_codeseparator_pos_init = false;
+    //! Opcode position of the last executed OP_CODESEPARATOR (or 0xFFFFFFFF if none executed).
+    uint32_t m_codeseparator_pos;
+
+    //! Whether m_annex_present and (when needed) m_annex_hash are initialized.
+    bool m_annex_init = false;
+    //! Whether an annex is present.
+    bool m_annex_present;
+    //! Hash of the annex data.
+    uint512 m_annex_hash;
+
+    //! Whether m_validation_weight_left is initialized.
+    bool m_validation_weight_left_init = false;
+    //! How much validation weight is left (decremented for every successful non-empty signature check).
+    int64_t m_validation_weight_left;
 };
 
 /** Signature hash sizes */
@@ -131,7 +199,7 @@ uint512 SignatureHash(const CScript& scriptCode, const T& txTo, unsigned int nIn
 class BaseSignatureChecker
 {
 public:
-    virtual bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const
+    virtual bool CheckECDSASignature(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const
     {
         return false;
     }
@@ -142,6 +210,11 @@ public:
     }
 
     virtual bool CheckSequence(const CScriptNum& nSequence) const
+    {
+         return false;
+    }
+
+    virtual bool CheckColdStake(const CScript& script) const
     {
          return false;
     }
@@ -159,19 +232,23 @@ private:
     const PrecomputedTransactionData* txdata;
 
 protected:
-    virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint512& sighash) const;
+    virtual bool VerifyECDSASignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint512& sighash) const;
 
 public:
     GenericTransactionSignatureChecker(const T* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(nullptr) {}
     GenericTransactionSignatureChecker(const T* txToIn, unsigned int nInIn, const CAmount& amountIn, const PrecomputedTransactionData& txdataIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(&txdataIn) {}
-    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const override;
+    bool CheckECDSASignature(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const override;
     bool CheckLockTime(const CScriptNum& nLockTime) const override;
     bool CheckSequence(const CScriptNum& nSequence) const override;
+    bool CheckColdStake(const CScript& script) const override {
+        return txTo->CheckColdStake(script);
+    }
 };
 
 using TransactionSignatureChecker = GenericTransactionSignatureChecker<CTransaction>;
 using MutableTransactionSignatureChecker = GenericTransactionSignatureChecker<CMutableTransaction>;
 
+bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* error = nullptr);
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
 
