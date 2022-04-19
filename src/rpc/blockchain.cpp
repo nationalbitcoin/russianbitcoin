@@ -871,6 +871,7 @@ static RPCHelpMan getblockheader()
                 {
                     {"blockhash", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "The block hash"},
                     {"verbose", RPCArg::Type::BOOL, /* default */ "true", "true for a json object, false for the hex-encoded data"},
+                    {"strip", RPCArg::Type::BOOL, /* default */ "false", "true to strip stake output and block signature, leaving 80 bytes"},
                 },
                 {
                     RPCResult{"for verbose = true",
@@ -907,6 +908,10 @@ static RPCHelpMan getblockheader()
     if (!request.params[1].isNull())
         fVerbose = request.params[1].get_bool();
 
+    bool fStrip = true;
+    if (!request.params[2].isNull())
+        fStrip = request.params[2].get_bool();
+
     const CBlockIndex* pblockindex;
     const CBlockIndex* tip;
     {
@@ -924,6 +929,8 @@ static RPCHelpMan getblockheader()
         CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
         ssBlock << pblockindex->GetBlockHeader();
         std::string strHex = HexStr(ssBlock);
+        if (fStrip)
+            return strHex.substr(0, 160);
         return strHex;
     }
 
@@ -966,7 +973,7 @@ static CBlockUndo GetUndoChecked(const CBlockIndex* pblockindex)
 static RPCHelpMan getblock()
 {
     return RPCHelpMan{"getblock",
-                "\nIf verbosity is 0, returns a string that is serialized, hex-encoded data for block 'hash'.\n"
+                "\nIf verbosity is 0, returns a string that is serialized, hex-encoded data for block 'hash' (stripped version, use 3 to get full data).\n"
                 "If verbosity is 1, returns an Object with information about block <hash>.\n"
                 "If verbosity is 2, returns an Object with information about block <hash> and information about each transaction. \n",
                 {
@@ -1044,12 +1051,28 @@ static RPCHelpMan getblock()
         block = GetBlockChecked(pblockindex);
     }
 
-    if (verbosity <= 0)
+    if (verbosity == 3)
     {
         CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
         ssBlock << block;
         std::string strHex = HexStr(ssBlock);
         return strHex;
+    }
+
+    if (verbosity <= 0)
+    {
+        // Serialize block header
+        CDataStream ssBlockHeader(SER_NETWORK, PROTOCOL_VERSION);
+        ssBlockHeader << pblockindex->GetBlockHeader();
+        std::string strHeaderHex = HexStr(ssBlockHeader);
+
+        // Serialize block itself
+        CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
+        ssBlock << block;
+        std::string strBlockHex = HexStr(ssBlock);
+
+        // Combine stripped header with a block body
+        return strHeaderHex.substr(0, 160) + strBlockHex.substr(strHeaderHex.size());
     }
 
     return blockToJSON(block, tip, pblockindex, verbosity >= 2);
@@ -2557,7 +2580,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "getblockcount",          &getblockcount,          {} },
     { "blockchain",         "getblock",               &getblock,               {"blockhash","verbosity|verbose"} },
     { "blockchain",         "getblockhash",           &getblockhash,           {"height"} },
-    { "blockchain",         "getblockheader",         &getblockheader,         {"blockhash","verbose"} },
+    { "blockchain",         "getblockheader",         &getblockheader,         {"blockhash","verbose","strip"} },
     { "blockchain",         "getchaintips",           &getchaintips,           {} },
     { "blockchain",         "getdifficulty",          &getdifficulty,          {} },
     { "blockchain",         "getmempoolancestors",    &getmempoolancestors,    {"txid","verbose"} },
