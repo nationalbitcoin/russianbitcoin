@@ -82,7 +82,6 @@ struct Params {
     int64_t nTargetTimespan;
     int64_t nMinipumPoASpacing;
     CKeyID authorityID;
-    int nLastCoinbaseEmissionHeight;
 
     /** The best chain should have at least this much work */
     uint256 nMinimumChainTrust;

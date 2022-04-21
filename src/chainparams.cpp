@@ -82,7 +82,6 @@ public:
         consensus.fPoSNoRetargeting = false;
         consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
         consensus.nMinerConfirmationWindow = 2016; // nTargetTimespan / nTargetSpacing
-        consensus.nLastCoinbaseEmissionHeight = 312000;
         consensus.nMPoSRewardRecipients = 10;
         consensus.nEnableHeaderSignatureHeight = 0;
         consensus.nCheckpointSpan = COINBASE_MATURITY;
@@ -174,7 +173,6 @@ public:
         consensus.fPoSNoRetargeting = false;
         consensus.nRuleChangeActivationThreshold = 1512; // 75% for testchains
         consensus.nMinerConfirmationWindow = 2016; // nTargetTimespan / nTargetSpacing
-        consensus.nLastCoinbaseEmissionHeight = 0x7fffffff;
         consensus.nMPoSRewardRecipients = 10;
         consensus.nEnableHeaderSignatureHeight = 0;
         consensus.nCheckpointSpan = COINBASE_MATURITY;
@@ -252,7 +250,6 @@ public:
         consensus.nTargetTimespan = 10 * 3 * 60; // every 10 blocks
         consensus.nTargetSpacing = 3 * 60;
         consensus.nMinipumPoASpacing = 3 * 60; // 3 minutes
-        consensus.nLastCoinbaseEmissionHeight = 0x7fffffff;
         consensus.authorityID = CKeyID(uint160(ParseHex("38d376a434b047f814e06b9391f7bca4f9eaf248"))); // -publisherkey=94ggaLUJE72zBkyoCd2xibxT6wyX9kVD3U1GGXzVH7dAynADtSt
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = true;
