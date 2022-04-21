@@ -37,7 +37,7 @@ const std::string CLIENT_NAME("Satoshi");
     #elif defined(GIT_COMMIT_ID)
         #define BUILD_SUFFIX "-g" GIT_COMMIT_ID
     #else
-        #define BUILD_SUFFIX "-unk"
+        #define BUILD_SUFFIX ""
     #endif
 #endif
 
