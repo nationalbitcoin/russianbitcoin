@@ -16,10 +16,12 @@ bool CPubKey::RecoverCompact(const uint512 &hash, const std::vector<unsigned cha
     // Must be enough to contain public key and signature
     if (vchSig.size() != JOINED_SIGNATURE_SIZE)
         return false;
+    // Verify signature
+    if(!ed25519_verify(vchSig.data() + 32, hash.begin(), hash.size(), vchSig.data()) != 0)
+        return false;
     // Set public key
     Set32(vchSig.data());
-    // Verify signature
-    return ed25519_verify(vchSig.data() + 32, hash.begin(), hash.size(), vchSig.data()) != 0;
+    return true;
 }
 
 void CExtPubKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {

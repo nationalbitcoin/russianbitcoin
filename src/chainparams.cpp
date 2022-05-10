@@ -62,17 +62,19 @@ class CMainParams : public CChainParams {
 public:
     CMainParams() {
         strNetworkID = CBaseChainParams::MAIN;
-        consensus.nSubsidyHalvingInterval = 100000;
+        consensus.nSubsidyHalvingInterval = 600000;
         consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256{};
         consensus.BIP65Height = 1;
         consensus.BIP66Height = 1;
         consensus.CSVHeight = 1;
         consensus.SegwitHeight = 1;
+        consensus.CheckPoASubsidyStartHeight = 311911;
+        consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
         consensus.MinBIP9WarningHeight = consensus.SegwitHeight + consensus.nMinerConfirmationWindow;
         consensus.RUBTCColdStakeEnableHeight = 1;
         consensus.powLimit = arith_uint256("00000000000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa"); // Initial difficulty is 1000000.0
-        consensus.posLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.posLimit = uint256S("000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nTargetTimespan = 10 * 3 * 60; // every 10 blocks
         consensus.nTargetSpacing = 3 * 60;
         consensus.nMinipumPoASpacing = 3600; // One hour
@@ -80,7 +82,6 @@ public:
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
         consensus.fPoSNoRetargeting = false;
-        consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
         consensus.nMinerConfirmationWindow = 2016; // nTargetTimespan / nTargetSpacing
         consensus.nMPoSRewardRecipients = 10;
         consensus.nEnableHeaderSignatureHeight = 0;
@@ -153,13 +154,15 @@ class CTestNetParams : public CChainParams {
 public:
     CTestNetParams() {
         strNetworkID = CBaseChainParams::TESTNET;
-        consensus.nSubsidyHalvingInterval = 100000;
+        consensus.nSubsidyHalvingInterval = 600000;
         consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256{};
         consensus.BIP65Height = 1;
         consensus.BIP66Height = 1;
         consensus.CSVHeight = 1;
         consensus.SegwitHeight = 1;
+        consensus.CheckPoASubsidyStartHeight = 1;
+        consensus.nMinerConfirmationWindow = 2016; // nTargetTimespan / nTargetSpacing
         consensus.MinBIP9WarningHeight = consensus.SegwitHeight + consensus.nMinerConfirmationWindow;
         consensus.RUBTCColdStakeEnableHeight = 2000;
         consensus.powLimit = arith_uint256("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -172,7 +175,6 @@ public:
         consensus.fPowNoRetargeting = false;
         consensus.fPoSNoRetargeting = false;
         consensus.nRuleChangeActivationThreshold = 1512; // 75% for testchains
-        consensus.nMinerConfirmationWindow = 2016; // nTargetTimespan / nTargetSpacing
         consensus.nMPoSRewardRecipients = 10;
         consensus.nEnableHeaderSignatureHeight = 0;
         consensus.nCheckpointSpan = COINBASE_MATURITY;
@@ -243,6 +245,7 @@ public:
         consensus.BIP66Height = 1251; // BIP66 activated on regtest (Used in functional tests)
         consensus.CSVHeight = 432; // CSV activated on regtest (Used in rpc activation tests)
         consensus.SegwitHeight = 0; // SEGWIT is always activated on regtest unless overridden
+        consensus.CheckPoASubsidyStartHeight = 1;
         consensus.MinBIP9WarningHeight = 0;
         consensus.RUBTCColdStakeEnableHeight = 2000;
         consensus.powLimit = arith_uint256("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");

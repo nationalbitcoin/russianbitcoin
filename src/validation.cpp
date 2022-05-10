@@ -1298,13 +1298,15 @@ bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const CBlockIndex* pindex
 CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
     int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
-    // Force block reward to zero when right shift is undefined.
+    // Force block reward to CENT when right shift is undefined.
     if (halvings >= 64)
-        return 0;
+        return CENT;
 
-    CAmount nSubsidy = 12.5 * COIN;
+    CAmount nSubsidy = 1.5625 * COIN;
     nSubsidy >>= halvings;
-    return nSubsidy;
+
+    // Minimal block reward is 0.01 RUBTC
+    return (nSubsidy > CENT) ? nSubsidy : CENT;
 }
 
 CoinsViews::CoinsViews(
@@ -2071,12 +2073,23 @@ bool GetSpentCoinFromMainChain(const CBlockIndex* pforkPrev, COutPoint prevoutSt
 
 bool CheckReward(const CBlock& block, BlockValidationState& state, int nHeight, const Consensus::Params& consensusParams, CAmount nFees, CAmount nActualStakeReward)
 {
-    // Don't validate PoA coinbases for now
-    if (block.IsProofOfAuthority())
-        return true;
-
-    // Check full reward
+    // Calculate full block reward
     CAmount blockReward = nFees + GetBlockSubsidy(nHeight, consensusParams);
+
+    // PoA block?
+    if (block.IsProofOfAuthority()) {
+
+        // Check coinbase output value
+        if (block.vtx[0]->GetValueOut() > blockReward && consensusParams.CheckPoASubsidyStartHeight < nHeight) {
+            LogPrintf("CheckReward(): coinbase pays too much (actual=%d vs limit=%d)\n", block.vtx[0]->GetValueOut(), blockReward);
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount");
+        }
+
+        return true;
+    }
+
+    // It's a PoS block then
+
     if (nActualStakeReward > blockReward) {
         LogPrintf("CheckReward(): coinstake pays too much (actual=%d vs limit=%d)\n", nActualStakeReward, blockReward);
         return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cs-amount");
@@ -3698,7 +3711,7 @@ bool SignBlock(std::shared_ptr<CBlock> pblock, CWallet& wallet, const CAmount& n
             }
 
             // append a signature to our block
-            return key.Sign(pblock->GetHashWithoutSign(), pblock->vchBlockSig) && CheckHeaderPoS(*pblock, Params().GetConsensus());
+            return key.SignCompact(pblock->GetHashWithoutSign(), pblock->vchBlockSig) && CheckHeaderPoS(*pblock, Params().GetConsensus());
         }
     }
 
@@ -3771,7 +3784,12 @@ bool CheckBlockSignature(const CBlock& block)
         return false;
     }
 
-    return CPubKey(vchPubKey).Verify(block.GetHashWithoutSign(), block.vchBlockSig);
+    CPubKey sigPubkey;
+    if (!sigPubkey.RecoverCompact(block.GetHashWithoutSign(), block.vchBlockSig))
+        return false;
+
+    // Compare public key IDs
+    return CPubKey(vchPubKey).GetID() == sigPubkey.GetID();
 }
 
 static bool CheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, const Consensus::Params& consensusParams, bool fCheckPoA = true, bool fCheckPOS = true)

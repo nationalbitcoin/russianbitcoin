@@ -32,19 +32,32 @@ CPrivKey CKey::GetPrivKey() const {
 
 CPubKey CKey::GetPubKey() const {
     assert(fValid);
-    uint8_t pubkey[SIZE];
-    ed25519_get_pubkey(pubkey, keydata.data());
-    CPubKey result;
-    result.Set32(pubkey);
-    return result;
+
+    // Allocate vector for prefix and pubkey
+    std::vector<uint8_t> vchPubkey;
+    vchPubkey.resize(SIZE + 1);
+    vchPubkey[0] = 0x03;
+
+    // Create pubkey
+    ed25519_get_pubkey(vchPubkey.data() + 1, keydata.data());
+
+    // Instantiate encapsulated version
+    return CPubKey(vchPubkey);
 }
 
 bool CKey::Sign(const uint512 &hash, std::vector<unsigned char>& vchSig, bool grind) const {
     if (!fValid)
         return false;
-    CPubKey pubkey = GetPubKey();
+
+    // Clear and resize
+    vchSig.clear();
     vchSig.resize(CPubKey::SIGNATURE_SIZE);
-    ed25519_sign(vchSig.data(), hash.begin(), hash.size(), pubkey.data() + 1, keydata.data());
+
+    uint8_t pubkey[SIZE];
+    ed25519_get_pubkey(pubkey, keydata.data());
+
+    // Sign
+    ed25519_sign(vchSig.data(), hash.begin(), hash.size(), pubkey, keydata.data());
     return true;
 }
 
@@ -64,6 +77,9 @@ bool CKey::VerifyPubKey(const CPubKey& pubkey) const {
 bool CKey::SignCompact(const uint512 &hash, std::vector<unsigned char>& vchSig) const {
     if (!fValid)
         return false;
+
+    // Clear previos contents
+    vchSig.clear();
     // Enough to contain public key + signature
     vchSig.resize(CPubKey::JOINED_SIGNATURE_SIZE);
 
