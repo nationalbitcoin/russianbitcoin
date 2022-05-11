@@ -3739,6 +3739,27 @@ bool GetBlockPublicKey(const CBlock& block, std::vector<unsigned char>& vchPubKe
         vchPubKey = vSolutions[0];
         return true;
     }
+    else if (whichType == TxoutType::WITNESS_V0_KEYHASH)
+    {
+        const CTxIn& txin = block.vtx[1]->vin[0]; // For segwit
+
+        // Witness stack size is constrained
+        if (txin.scriptWitness.stack.size() != 2)
+            return false;
+
+        // Coinstake pubkey ID
+        CKeyID keyID = CKeyID(uint160(vSolutions[0]));
+        CPubKey pubkey(txin.scriptWitness.stack[1]);
+
+        // Validate key and check key ID
+        if (!pubkey.IsValid() || pubkey.GetID() != keyID)
+            return false;
+
+        // Extract block signing key from witness stack
+        vchPubKey = txin.scriptWitness.stack[1];
+
+        return true;
+    }
     else if (whichType == TxoutType::PUBKEYHASH)
     {
         // Block signing key also can be encoded in the nonspendable output

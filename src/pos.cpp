@@ -145,22 +145,10 @@ bool CheckBlockInputPubKeyMatchesOutputPubKey(const CBlock& block, CCoinsViewCac
     if(coinstakeTx->vout.size() < 2) {
         return error("%s: coinstake transaction does not have the minimum number of outputs", __func__);
     }
-
     const CTxOut& txout = coinstakeTx->vout[1];
 
     if(coinIn.out.scriptPubKey == txout.scriptPubKey) {
         return true;
-    }
-
-    // If the input does not exactly match the output, it MUST be on P2PKH spent and P2PK out.
-    CTxDestination inputAddress;
-    TxoutType inputTxType=TxoutType::NONSTANDARD;
-    if(!ExtractDestination(coinIn.out.scriptPubKey, inputAddress, &inputTxType)) {
-        return error("%s: Could not extract address from input", __func__);
-    }
-
-    if(inputTxType != TxoutType::PUBKEYHASH || inputAddress.type() != typeid(PKHash)) {
-        return error("%s: non-exact match input must be P2PKH", __func__);
     }
 
     CTxDestination outputAddress;
@@ -169,46 +157,98 @@ bool CheckBlockInputPubKeyMatchesOutputPubKey(const CBlock& block, CCoinsViewCac
         return error("%s: Could not extract address from output", __func__);
     }
 
-    if(outputTxType != TxoutType::PUBKEY || outputAddress.type() != typeid(PKHash)) {
-        return error("%s: non-exact match output must be P2PK", __func__);
+    // Three cases are supported:
+    //
+    // P2PK -> P2PK
+    // P2PKH -> P2PK
+    // P2WPKH -> P2WPKH
+
+    if (outputTxType == TxoutType::PUBKEY || outputTxType == TxoutType::PUBKEYHASH) {
+
+        CTxDestination inputAddress;
+        TxoutType inputTxType=TxoutType::NONSTANDARD;
+
+        if(!ExtractDestination(coinIn.out.scriptPubKey, inputAddress, &inputTxType)) {
+            return error("%s: Could not extract address from input", __func__);
+        }
+
+        if(inputTxType != TxoutType::PUBKEYHASH || inputAddress.type() != typeid(PKHash)) {
+            return error("%s: non-exact match input must be P2PKH", __func__);
+        }
+
+        if(outputTxType != TxoutType::PUBKEY || outputAddress.type() != typeid(PKHash)) {
+            return error("%s: non-exact match output must be P2PK", __func__);
+        }
+
+        if(boost::get<PKHash>(inputAddress) != boost::get<PKHash>(outputAddress)) {
+            return error("%s: input pubkey does not match output pubkey", __func__);
+        }
+    }
+    else if(outputTxType == TxoutType::WITNESS_V0_KEYHASH) {
+        const CTxIn& txin = coinstakeTx->vin[0];
+
+        // Witness stack size is constrained
+        if (txin.scriptWitness.stack.size() != 2) {
+            return error("%s: Invalid witness stack size", __func__);
+        }
+
+        // P2WPKH destination for vin[0] witness public key
+        CPubKey wpk(txin.scriptWitness.stack[1]);
+
+        if (!wpk.IsValid()) {
+            return error("%s: witness pubkey is not valid", __func__);
+        }
+
+        // vin[0] and vout[1] must match the same P2WPKH destination
+        if (WitnessV0KeyHash(wpk) != boost::get<WitnessV0KeyHash>(outputAddress)) {
+            return error("%s: witness pubkey does not match output P2WPK pubkey", __func__);
+        }
+    }
+    else {
+        return error("%s: Unsupported coinstake scriptPubKey type\n", __func__);
     }
 
-    if(boost::get<PKHash>(inputAddress) != boost::get<PKHash>(outputAddress)) {
-        return error("%s: input P2PKH pubkey does not match output P2PK pubkey", __func__);
-    }
-
+    // Valid
     return true;
 }
 
 bool CheckRecoveredPubKeyFromBlockSignature(CBlockIndex* pindexPrev, const CBlockHeader& block, CCoinsViewCache& view) {
     Coin coinPrev;
-    if(!view.GetCoin(block.prevoutStake, coinPrev)){
-        if(!GetSpentCoinFromMainChain(pindexPrev, block.prevoutStake, &coinPrev)) {
-            return error("CheckRecoveredPubKeyFromBlockSignature(): Could not find %s and it was not at the tip", block.prevoutStake.hash.GetHex());
-        }
+    if(!view.GetCoin(block.prevoutStake, coinPrev) && !GetSpentCoinFromMainChain(pindexPrev, block.prevoutStake, &coinPrev)) {
+        return error("%s: Could not find %s and it was not at the tip", __func__, block.prevoutStake.hash.GetHex());
     }
 
     uint512 hash = block.GetHashWithoutSign();
 
     if(block.vchBlockSig.empty()) {
-        return error("CheckRecoveredPubKeyFromBlockSignature(): Signature is empty\n");
+        return error("%s: Signature is empty", __func__);
     }
 
     CPubKey pubkey;
-    if (!pubkey.RecoverCompact(hash, block.vchBlockSig))
-        return false;
+    if (!pubkey.RecoverCompact(hash, block.vchBlockSig)) {
+        return error("%s: Can not recover public key", __func__);
+    }
 
     CTxDestination address;
     TxoutType txType=TxoutType::NONSTANDARD;
-    if(ExtractDestination(coinPrev.out.scriptPubKey, address, &txType, true)) {
-        if ((txType == TxoutType::PUBKEY || txType == TxoutType::PUBKEYHASH || txType == TxoutType::COLDSTAKE) && address.type() == typeid(PKHash)) {
-            if(PKHash(pubkey.GetID()) == boost::get<PKHash>(address)) {
-                return true;
-            }
-        }
+    if(!ExtractDestination(coinPrev.out.scriptPubKey, address, &txType, true)) {
+        return error("%s: Unable to get output destination for coinPrev.out.scriptPubKey", __func__);
     }
 
-    return false;
+    if (txType != TxoutType::WITNESS_V0_KEYHASH && txType != TxoutType::PUBKEY && txType != TxoutType::PUBKEYHASH && txType != TxoutType::COLDSTAKE) {
+        return error("%s: Unsupported output type for coinPrev.out.scriptPubKey", __func__);
+    }
+
+    if (address.type() == typeid(PKHash) && PKHash(pubkey) != boost::get<PKHash>(address)) {
+        return error("%s: Signing pubkey and PKHash destination mismatch", __func__);
+    }
+
+    if (address.type() == typeid(WitnessV0KeyHash) && WitnessV0KeyHash(pubkey) != boost::get<WitnessV0KeyHash>(address)) {
+        return error("%s: Signing pubkey and WitnessV0KeyHash destination mismatch", __func__);
+    }
+    
+    // Valid and matching
+    return true;
 }
 
 bool CheckKernel(CBlockIndex* pindexPrev, unsigned int nBits, uint32_t nTimeBlock, const COutPoint& prevout, CCoinsViewCache& view)
@@ -378,15 +418,15 @@ bool AddMPoSScript(std::vector<CScript> &mposScriptList, int nHeight, const Cons
         return true;
     }
 
-    // Read the block
-    uint160 stakeAddress;
-    if(!pblocktree->ReadStakeIndex(nHeight, stakeAddress)){
-        return false;
-    }
-
     // The block reward for PoS is in the second transaction (coinstake) and the second or third output
     if(pblockindex->IsProofOfStake())
     {
+        // Read the block
+        uint160 stakeAddress;
+        if(!pblocktree->ReadStakeIndex(nHeight, stakeAddress)){
+            return false;
+        }
+
         if(stakeAddress == uint160())
         {
             LogPrint(BCLog::COINSTAKE, "Fail to solve script for mpos reward recipient\n");
@@ -394,28 +434,24 @@ bool AddMPoSScript(std::vector<CScript> &mposScriptList, int nHeight, const Cons
             //So, use an OP_RETURN script to burn the coins for the unknown staker
             script = CScript() << OP_RETURN;
         }else{
-            // Make public key hash script
-            script = CScript() << OP_DUP << OP_HASH160 << ToByteVector(stakeAddress) << OP_EQUALVERIFY << OP_CHECKSIG;
+            // Make witness public key hash script
+            script = CScript() << OP_0 << ToByteVector(stakeAddress);
         }
 
         // Add the script into the list
         mposScriptList.push_back(script);
 
-        // Update script cache
-        AddToScriptCache(script, pblockindex, nHeight, consensusParams);
     }
     else
     {
-        if(Params().MineBlocksOnDemand()){
-            //this could happen in regtest. Just ignore and add an empty script
-            script = CScript() << OP_RETURN;
-            mposScriptList.push_back(script);
-            return true;
-
-        }
-        LogPrint(BCLog::COINSTAKE, "The block is not proof-of-stake\n");
-        return false;
+        // Use PoA key as fallback
+        script = CScript() << OP_0 << ToByteVector(consensusParams.authorityID);
+        mposScriptList.push_back(script);
+        LogPrint(BCLog::COINSTAKE, "MPoS fallback: selected block is not proof-of-stake\n");
     }
+
+    // Update script cache
+    AddToScriptCache(script, pblockindex, nHeight, consensusParams);
 
     return true;
 }

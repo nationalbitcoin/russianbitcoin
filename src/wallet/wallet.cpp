@@ -2092,7 +2092,7 @@ CAmount CWalletTx::GetStakeCredit(bool fUseCache, const isminefilter& filter) co
             const CTxOut &txout = tx->vout[i];
             std::vector<valtype> solutions;
             auto whichtype = Solver(txout.scriptPubKey, solutions);
-            bool stakeable = ((TxoutType::PUBKEY ==  whichtype) || (TxoutType::PUBKEYHASH == whichtype) ||
+            bool stakeable = ((TxoutType::PUBKEY ==  whichtype) || (TxoutType::WITNESS_V0_KEYHASH ==  whichtype) || (TxoutType::PUBKEYHASH == whichtype) ||
                 (includeColdStaking && TxoutType::COLDSTAKE == whichtype));
             if (stakeable) {
                 nCredit += pwallet->GetCredit(txout, filter);
@@ -2530,7 +2530,7 @@ void CWallet::AvailableCoinsForStaking(std::vector<COutput>& vCoins) const
                         continue;
                     std::vector<valtype> solutions;
                     auto whichtype = Solver(pcoin->tx->vout[i].scriptPubKey, solutions);
-                    if ((TxoutType::PUBKEY ==  whichtype) || (TxoutType::PUBKEYHASH == whichtype) ||
+                    if ((TxoutType::PUBKEY ==  whichtype) || (TxoutType::WITNESS_V0_KEYHASH ==  whichtype) || (TxoutType::PUBKEYHASH == whichtype) ||
                             (includeColdStaking && TxoutType::COLDSTAKE == whichtype))
                     {
                         std::unique_ptr<SigningProvider> provider = GetSolvingProvider(pcoin->tx->vout[i].scriptPubKey);
@@ -3542,7 +3542,7 @@ bool CWallet::CreateCoinStake(const CWallet& wallet, unsigned int nBits, const C
                 break;
             }
             LogPrint(BCLog::COINSTAKE, "CreateCoinStake : parsed kernel type=%s\n", GetTxnOutputType(whichType).c_str());
-            if (whichType != TxoutType::PUBKEY && whichType != TxoutType::PUBKEYHASH && whichType != TxoutType::COLDSTAKE)
+            if (whichType != TxoutType::PUBKEY && whichType != TxoutType::PUBKEYHASH && whichType != TxoutType::WITNESS_V0_KEYHASH && whichType != TxoutType::COLDSTAKE)
             {
                 LogPrint(BCLog::COINSTAKE, "CreateCoinStake : no support for kernel type=%s\n", GetTxnOutputType(whichType).c_str());
                 break;  // only support pay to public key and pay to address
@@ -3558,6 +3558,18 @@ bool CWallet::CreateCoinStake(const CWallet& wallet, unsigned int nBits, const C
                     break;  // unable to find corresponding public key
                 }
                 scriptPubKeyOut << key.GetPubKey().getvch() << OP_CHECKSIG;
+                aggregateScriptPubKeyHashKernel = scriptPubKeyKernel;
+            }
+            else if (whichType == TxoutType::WITNESS_V0_KEYHASH) {
+                // convert to pay to public key type
+                uint160 hash160(vSolutions[0]);
+                CKeyID pubKeyHash(hash160);
+                if (!spk_man->GetKey(pubKeyHash, key))
+                {
+                    LogPrint(BCLog::COINSTAKE, "CreateCoinStake : failed to get key for kernel type=%s\n", GetTxnOutputType(whichType).c_str());
+                    break;  // unable to find corresponding public key
+                }
+                scriptPubKeyOut << OP_0 << vSolutions[0];
                 aggregateScriptPubKeyHashKernel = scriptPubKeyKernel;
             }
             else if (whichType == TxoutType::PUBKEY)
