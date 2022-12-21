@@ -1050,8 +1050,8 @@ public:
     // serves to disable the trivial sendmoney when OS account compromised
     // provides no real security
     std::atomic<bool> m_wallet_unlock_staking_only{false};
-    int64_t m_last_coin_stake_search_time{0};
-    int64_t m_last_coin_stake_search_interval{0};
+    std::atomic<int64_t> m_last_coin_stake_search_time{0};
+    std::atomic<int64_t> m_last_coin_stake_search_interval{0};
     std::atomic<bool> m_enabled_staking{false};
 
     size_t KeypoolCountExternalKeys() const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);

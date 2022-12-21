@@ -65,6 +65,8 @@
 #include <QVBoxLayout>
 #include <QWindow>
 
+#include <shutdown.h>
+
 
 const std::string BitcoinGUI::DEFAULT_UIPLATFORM =
 #if defined(Q_OS_MAC)
@@ -513,7 +515,7 @@ void BitcoinGUI::createMenuBar()
         QApplication::activeWindow()->showMinimized();
     });
     connect(qApp, &QApplication::focusWindowChanged, [minimize_action] (QWindow* window) {
-        minimize_action->setEnabled(window != nullptr && (window->flags() & Qt::Dialog) != Qt::Dialog && window->windowState() != Qt::WindowMinimized);
+        if (!ShutdownRequested()) minimize_action->setEnabled(window != nullptr && (window->flags() & Qt::Dialog) != Qt::Dialog && window->windowState() != Qt::WindowMinimized);
     });
 
 #ifdef Q_OS_MAC
@@ -528,7 +530,7 @@ void BitcoinGUI::createMenuBar()
     });
 
     connect(qApp, &QApplication::focusWindowChanged, [zoom_action] (QWindow* window) {
-        zoom_action->setEnabled(window != nullptr);
+        if (!ShutdownRequested()) zoom_action->setEnabled(window != nullptr);
     });
 #endif
 

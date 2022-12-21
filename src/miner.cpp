@@ -27,6 +27,8 @@
 #include <wallet/wallet.h>
 #endif
 
+#include <shutdown.h>
+
 #include <algorithm>
 #include <utility>
 
@@ -632,20 +634,20 @@ void ThreadStakeMiner(CWallet *pwallet, CConnman* connman, ChainstateManager* ch
     std::set<std::pair<const CWalletTx*,unsigned int> > setCoins;
     uint256 chainTipForCoins;
 
-    while (true)
+    while (!ShutdownRequested())
     {
         while (pwallet->IsLocked() || !pwallet->m_enabled_staking)
         {
             pwallet->m_last_coin_stake_search_interval = 0;
-            UninterruptibleSleep(std::chrono::milliseconds{10000});
+            if (!ShutdownRequested()) UninterruptibleSleep(std::chrono::milliseconds{100});
         }
 
         // Don't disable PoS mining for no connections if in regtest mode
         if (!regtestMode && !gArgs.GetBoolArg("-emergencystaking", false)) {
-            while (connman->GetNodeCount(CConnman::CONNECTIONS_ALL) < 4 || ::ChainstateActive().IsInitialBlockDownload()) {
+            while (!ShutdownRequested() && (connman->GetNodeCount(CConnman::CONNECTIONS_ALL) < 4 || ::ChainstateActive().IsInitialBlockDownload())) {
                 pwallet->m_last_coin_stake_search_interval = 0;
                 fTryToSync = true;
-                UninterruptibleSleep(std::chrono::milliseconds{1000});
+                if (!ShutdownRequested()) UninterruptibleSleep(std::chrono::milliseconds{1000});
             }
             if (fTryToSync) {
                 fTryToSync = false;
@@ -653,7 +655,7 @@ void ThreadStakeMiner(CWallet *pwallet, CConnman* connman, ChainstateManager* ch
                     ::ChainActive().Tip()->GetBlockTime() < GetTime() - Params().GetConsensus().nTargetSpacing ||
                     !::ChainActive().Tip()->HaveTxsDownloaded() ||
                     !::ChainActive().Tip()->IsValid(BLOCK_VALID_TRANSACTIONS)) {
-                    UninterruptibleSleep(std::chrono::milliseconds{Params().GetConsensus().nTargetSpacing / 10 * 1000});
+                    if (!ShutdownRequested()) UninterruptibleSleep(std::chrono::milliseconds{Params().GetConsensus().nTargetSpacing / 10 * 1000});
                     continue;
                 }
             }
@@ -690,7 +692,7 @@ void ThreadStakeMiner(CWallet *pwallet, CConnman* connman, ChainstateManager* ch
 
             uint32_t beginningTime=GetAdjustedTime();
             beginningTime &= ~STAKE_TIMESTAMP_MASK;
-            for (uint32_t i=beginningTime;i<beginningTime + MAX_STAKE_LOOKAHEAD;i+=STAKE_TIMESTAMP_MASK+1) {
+            for (uint32_t i=beginningTime; !ShutdownRequested() && i < beginningTime + MAX_STAKE_LOOKAHEAD; i+= STAKE_TIMESTAMP_MASK+1) {
                 // The information is needed for status bar to determine if the staker is trying to create block and when it will be created approximately,
                 if (pwallet->m_last_coin_stake_search_time == 0) pwallet->m_last_coin_stake_search_time = GetAdjustedTime(); // startup timestamp
                 // nLastCoinStakeSearchInterval > 0 mean that the staker is running
@@ -726,7 +728,7 @@ void ThreadStakeMiner(CWallet *pwallet, CConnman* connman, ChainstateManager* ch
                         // Should always reach here unless we spent too much time processing transactions and the timestamp is now invalid
                         // CheckStake also does CheckBlock and AcceptBlock to propogate it to the network
                         bool validBlock = false;
-                        while (!validBlock) {
+                        while (!ShutdownRequested() && !validBlock) {
                             if (::ChainActive().Tip()->GetBlockHash() != pblockfilled->hashPrevBlock) {
                                 //another block was received while building ours, scrap progress
                                 LogPrintf("ThreadStakeMiner(): Valid future PoS block was orphaned before becoming valid\n");
@@ -743,10 +745,10 @@ void ThreadStakeMiner(CWallet *pwallet, CConnman* connman, ChainstateManager* ch
                                     //if being agressive, then check more often to publish immediately when valid. This might allow you to find more blocks, 
                                     //but also increases the chance of broadcasting invalid blocks and getting DoS banned by nodes,
                                     //or receiving more stale/orphan blocks than normal. Use at your own risk.
-                                    UninterruptibleSleep(std::chrono::milliseconds{100});
+                                    if (!ShutdownRequested()) UninterruptibleSleep(std::chrono::milliseconds{100});
                                 } else {
-                                    //too early, so wait 3 seconds and try again
-                                    UninterruptibleSleep(std::chrono::milliseconds{3000});
+                                    //too early, so wait 1 second and try again
+                                    if (!ShutdownRequested()) UninterruptibleSleep(std::chrono::milliseconds{1000});
                                 }
                                 continue;
                             }
@@ -764,7 +766,7 @@ void ThreadStakeMiner(CWallet *pwallet, CConnman* connman, ChainstateManager* ch
                 }
             }
         }
-        UninterruptibleSleep(std::chrono::milliseconds{nMinerSleep});
+        if (!ShutdownRequested()) UninterruptibleSleep(std::chrono::milliseconds{nMinerSleep});
     }
 }
 

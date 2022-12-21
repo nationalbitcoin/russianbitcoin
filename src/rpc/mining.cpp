@@ -238,7 +238,8 @@ static UniValue getstakinginfo(const JSONRPCRequest& request)
     {
         LOCK(pwallet->cs_wallet);
         nWeight = pwallet->GetStakeWeight();
-        lastCoinStakeSearchInterval = pwallet->m_enabled_staking ? pwallet->m_last_coin_stake_search_interval : 0;
+        if (pwallet->m_enabled_staking)
+            lastCoinStakeSearchInterval = pwallet->m_last_coin_stake_search_interval;
     }
 #endif
 
