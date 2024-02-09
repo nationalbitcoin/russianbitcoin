@@ -151,7 +151,7 @@ extern uint64_t nPruneTarget;
 /** Documentation for argument 'checklevel'. */
 extern const std::vector<std::string> CHECKLEVEL_DOC;
 
-inline int64_t FutureDrift(uint32_t nTime) { return nTime + 15; }
+inline int64_t FutureDrift(uint32_t nTime) { return nTime + 2 * 60 * 60; }
 
 /** Open a block file (blk?????.dat) */
 FILE* OpenBlockFile(const FlatFilePos &pos, bool fReadOnly = false);
