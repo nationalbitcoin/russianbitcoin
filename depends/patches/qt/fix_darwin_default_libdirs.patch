@@ -1,0 +1,17 @@
+--- old/qtbase/mkspecs/features/toolchain.prf	2024-02-12 00:21:08.386860464 +0300
++++ new/qtbase/mkspecs/features/toolchain.prf	2024-02-12 00:26:51.467153186 +0300
+@@ -138,9 +138,12 @@
+                 }
+             }
+         }
+-        isEmpty(QMAKE_DEFAULT_LIBDIRS)|isEmpty(QMAKE_DEFAULT_INCDIRS): \
++        isEmpty(QMAKE_DEFAULT_INCDIRS): \
+             !integrity: \
+-                error("failed to parse default search paths from compiler output")
++        isEmpty(QMAKE_DEFAULT_LIBDIRS): \
++            !integrity:!darwin: \
++                error("failed to parse default library paths from compiler output")
++
+         QMAKE_DEFAULT_LIBDIRS = $$unique(QMAKE_DEFAULT_LIBDIRS)
+     } else: msvc {
+         # This doesn't differentiate between host and target,
